@@ -94,7 +94,7 @@ function TelaSelecao({ onSelect, jaAvaliaram, onAdmin }) {
           Selecione o seu nome para começar
         </p>
         <input
-          placeholder="Buscar o seu nome..."
+          placeholder="Buscar seu nome..."
           value={busca}
           onChange={e => setBusca(e.target.value)}
           style={{ width:"100%", padding:"10px 14px", borderRadius:10, border:"1px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.08)", color:"#fff", fontSize:14, marginBottom:10, outline:"none", boxSizing:"border-box" }}
@@ -116,7 +116,7 @@ function TelaSelecao({ onSelect, jaAvaliaram, onAdmin }) {
                   padding:"12px 16px", borderRadius:10, 
                   border:"1px solid rgba(255,255,255,0.1)", 
                   background: enviou ? "rgba(102,242,119,0.05)" : "rgba(255,255,255,0.05)", 
-                  color: enviou ? "rgba(255,255,255,0.4)" : "#fff", // O nome fica meio apagado se já tiver votado
+                  color: enviou ? "rgba(255,255,255,0.4)" : "#fff", 
                   fontSize:14, fontWeight:600, 
                   cursor: enviou ? "not-allowed" : "pointer", 
                   textAlign:"left" 
@@ -290,6 +290,7 @@ function TelaAvaliacao({ avaliador, avaliacoes, setAvaliacoes, onEnviar, enviand
               <div style={{ fontSize:36, marginBottom:8 }}>✅</div>
               <div style={{ fontWeight:700, color:"#166534", fontSize:15 }}>Avaliação enviada!</div>
               <div style={{ color:"#16a34a", fontSize:13, marginTop:4 }}>Obrigado, {avaliador}!</div>
+              <div style={{ color:"#16a34a", fontSize:13, marginTop:4 }}>Obrigado, {avaliador}!</div>
               <button onClick={onVoltar} style={{ marginTop:14, padding:"10px 24px", borderRadius:10, border:"none", background:"#01284F", color:"#66F277", fontSize:13, fontWeight:700, cursor:"pointer" }}>
                 Voltar ao início
               </button>
@@ -367,6 +368,7 @@ function TelaAvaliacao({ avaliador, avaliacoes, setAvaliacoes, onEnviar, enviand
 // ── Painel Admin ─────────────────────────────────────────────────────────────
 function TelaAdmin({ dados, onVoltar }) {
   const [tab, setTab] = useState("ranking");
+  const [jogadorSelecionado, setJogadorSelecionado] = useState(null);
 
   const consolidado = JOGADORES.map(jog => {
     const medias = {};
@@ -393,6 +395,50 @@ function TelaAdmin({ dados, onVoltar }) {
 
   const jaAvaliaram = Object.keys(dados);
 
+  // VISTA SUB-DETALHE: Mostra quem votou no jogador e quais notas deu
+  if (jogadorSelecionado) {
+    const votosRecebidos = Object.entries(dados)
+      .filter(([av]) => av !== jogadorSelecionado && dados[av][jogadorSelecionado])
+      .map(([av, avDados]) => ({
+        avaliador: av,
+        notas: avDados[jogadorSelecionado]
+      }));
+
+    return (
+      <div style={{ minHeight:"100vh", background:"#f8fafc" }}>
+        <div style={{ background:"#01284F", padding:"1rem 1.25rem" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <button onClick={() => setJogadorSelecionado(null)} style={{ background:"rgba(255,255,255,0.1)", border:"none", color:"#fff", borderRadius:8, padding:"6px 10px", cursor:"pointer", fontSize:16 }}>←</button>
+            <div style={{ color:"#fff", fontWeight:700, fontSize:15 }}>🔍 Votos em: {jogadorSelecionado}</div>
+          </div>
+        </div>
+
+        <div style={{ padding:"1rem" }}>
+          <div style={{ background:"#fff", borderRadius:14, border:"1px solid #e2e8f0", overflow:"hidden" }}>
+            <div style={{ background:"#01284F", padding:"10px 16px", display:"flex", gap:6 }}>
+              <span style={{ color:"#66F277", fontSize:10, fontWeight:700, flex:2 }}>AVALIADOR</span>
+              {CRITERIOS.map(c=><span key={c.key} style={{ color:"rgba(255,255,255,0.5)", fontSize:11, flex:1, textAlign:"center" }}>{c.icon}</span>)}
+            </div>
+            {votosRecebidos.length === 0 ? (
+              <div style={{ padding:16, textAlign:"center", color:"#94a3b8", fontSize:13 }}>Nenhuma avaliação recebida ainda por este jogador.</div>
+            ) : (
+              votosRecebidos.map((v, i) => (
+                <div key={v.avaliador} style={{ display:"flex", alignItems:"center", gap:6, padding:"9px 16px", borderBottom:i<votosRecebidos.length-1?"1px solid #f1f5f9":"none" }}>
+                  <span style={{ flex:2, fontSize:12, fontWeight:600, color:"#1e293b", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{v.avaliador}</span>
+                  {CRITERIOS.map(c => (
+                    <span key={c.key} style={{ flex:1, textAlign:"center", fontSize:12, fontWeight:600, color:"#1e293b" }}>
+                      {v.notas[c.key] !== undefined && v.notas[c.key] !== "" ? Number(v.notas[c.key]).toFixed(1) : "—"}
+                    </span>
+                  ))}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ minHeight:"100vh", background:"#f8fafc" }}>
       <div style={{ background:"#01284F", padding:"1rem 1.25rem" }}>
@@ -403,8 +449,8 @@ function TelaAdmin({ dados, onVoltar }) {
         <div style={{ display:"flex", gap:8 }}>
           {["ranking","participacao"].map(t => (
             <button key={t} onClick={() => setTab(t)}
-              style={{ padding:"6px 16px", borderRadius:20, border:"none", background:tab==="ranking"?"#66F277":"rgba(255,255,255,0.1)", color:tab===t?"#01284F":"#fff", fontSize:12, fontWeight:700, cursor:"pointer" }}>
-              {t==="ranking" ? "🏆 Ranking" : "👥 Participação"}
+              style={{ padding:"6px 16px", borderRadius:20, border:"none", background:tab===t?"#66F277":"rgba(255,255,255,0.1)", color:tab===t?"#01284F":"#fff", fontSize:12, fontWeight:700, cursor:"pointer" }}>
+              {t==="ranking" ? "🏆 Ranking (Clique no nome)" : "👥 Participação"}
             </button>
           ))}
         </div>
@@ -420,7 +466,9 @@ function TelaAdmin({ dados, onVoltar }) {
                 <span style={{ color:"#66F277", fontSize:10, fontWeight:700, flex:1, textAlign:"center" }}>NOTA</span>
               </div>
               {consolidado.map((j,i) => (
-                <div key={j.nome} style={{ display:"flex", alignItems:"center", gap:6, padding:"9px 16px", borderBottom:i<consolidado.length-1?"1px solid #f1f5f9":"none", background:i<3?"rgba(102,242,119,0.04)":"transparent" }}>
+                <div key={j.nome} 
+                  onClick={() => setJogadorSelecionado(j.nome)}
+                  style={{ display:"flex", alignItems:"center", gap:6, padding:"9px 16px", borderBottom:i<consolidado.length-1?"1px solid #f1f5f9":"none", background:i<3?"rgba(102,242,119,0.04)":"transparent", cursor:"pointer" }}>
                   <span style={{ fontSize:11, fontWeight:700, color:i<3?"#037971":"#94a3b8", width:18 }}>{i+1}</span>
                   <span style={{ flex:2, fontSize:12, fontWeight:600, color:"#1e293b", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{j.nome}</span>
                   {CRITERIOS.map(c=>(
@@ -509,7 +557,6 @@ export default function App() {
   function acessarAdmin() {
     const senhaDigitada = window.prompt("Acesso restrito. Digite a senha:");
     
-    // A senha definida foi "TiagoAdmin". Você pode alterá-la na linha abaixo:
     if (senhaDigitada === "TiagoAdmin") {
       setTela("admin");
     } else if (senhaDigitada !== null && senhaDigitada !== "") {
