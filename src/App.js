@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 
 const JOGADORES = [
   "AMANDA","ANA PAULA","BARBARA F.","BARBARA O.","BIANCA",
-  "BRUNNA A.","CAMILLA R.","CARMEN","CHARLES","DILEYGON",
+  "BRUNNA A.","CAMILLA R.","CARMEN","CHARLES","DILLEYGOR",
   "DIORGE","EBER","EDUARDO A.","EDUARDO M.","ELISA",
   "FABIULA","FLAVIA","HELENO","JEAN","JOAO",
   "LAISSE","LEO","LORRAYNE","MARCIM J.","MARIO",
@@ -196,14 +196,18 @@ function TelaAvaliacao({ avaliador, avaliacoes, setAvaliacoes, onEnviar, enviand
             </button>
           )}
           {next ? (
-            <button onClick={() => setJogadorAtual(next)}
-              style={{ flex:1, padding:12, borderRadius:12, border:"none", background:"#037971", color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer" }}>
-              {next} →
+            <button 
+              onClick={() => { if(nf !== null) setJogadorAtual(next); }}
+              disabled={nf === null}
+              style={{ flex:1, padding:12, borderRadius:12, border:"none", background: nf !== null ? "#037971" : "#e2e8f0", color: nf !== null ? "#fff" : "#94a3b8", fontSize:12, fontWeight:700, cursor: nf !== null ? "pointer" : "not-allowed", opacity: nf !== null ? 1 : 0.7 }}>
+              {nf === null ? "⚠️ Preencha os 4 critérios" : `${next} →`}
             </button>
           ) : (
-            <button onClick={() => setView("resumo")}
-              style={{ flex:1, padding:12, borderRadius:12, border:"none", background:"#66F277", color:"#01284F", fontSize:13, fontWeight:700, cursor:"pointer" }}>
-              Ver resumo ✓
+            <button 
+              onClick={() => { if(nf !== null) setView("resumo"); }}
+              disabled={nf === null}
+              style={{ flex:1, padding:12, borderRadius:12, border:"none", background: nf !== null ? "#66F277" : "#e2e8f0", color: nf !== null ? "#01284F" : "#94a3b8", fontSize:13, fontWeight:700, cursor: nf !== null ? "pointer" : "not-allowed", opacity: nf !== null ? 1 : 0.7 }}>
+              {nf === null ? "⚠️ Preencha os 4 critérios" : "Ver resumo ✓"}
             </button>
           )}
         </div>
