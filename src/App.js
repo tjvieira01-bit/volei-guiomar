@@ -94,7 +94,7 @@ function TelaSelecao({ onSelect, jaAvaliaram, onAdmin }) {
           Selecione o seu nome para começar
         </p>
         <input
-          placeholder="Buscar seu nome..."
+          placeholder="Buscar o seu nome..."
           value={busca}
           onChange={e => setBusca(e.target.value)}
           style={{ width:"100%", padding:"10px 14px", borderRadius:10, border:"1px solid rgba(255,255,255,0.2)", background:"rgba(255,255,255,0.08)", color:"#fff", fontSize:14, marginBottom:10, outline:"none", boxSizing:"border-box" }}
@@ -103,10 +103,26 @@ function TelaSelecao({ onSelect, jaAvaliaram, onAdmin }) {
           {filtrados.map(j => {
             const enviou = jaAvaliaram.includes(j);
             return (
-              <button key={j} onClick={() => onSelect(j)}
-                style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 16px", borderRadius:10, border:"1px solid rgba(255,255,255,0.1)", background: enviou ? "rgba(102,242,119,0.1)" : "rgba(255,255,255,0.05)", color:"#fff", fontSize:14, fontWeight:600, cursor:"pointer", textAlign:"left" }}>
+              <button key={j} 
+                onClick={() => {
+                  if (enviou) {
+                    alert("🔒 Este jogador já enviou a sua avaliação. O acesso está bloqueado para garantir a privacidade dos votos.");
+                  } else {
+                    onSelect(j);
+                  }
+                }}
+                style={{ 
+                  display:"flex", alignItems:"center", justifyContent:"space-between", 
+                  padding:"12px 16px", borderRadius:10, 
+                  border:"1px solid rgba(255,255,255,0.1)", 
+                  background: enviou ? "rgba(102,242,119,0.05)" : "rgba(255,255,255,0.05)", 
+                  color: enviou ? "rgba(255,255,255,0.4)" : "#fff", // O nome fica meio apagado se já tiver votado
+                  fontSize:14, fontWeight:600, 
+                  cursor: enviou ? "not-allowed" : "pointer", 
+                  textAlign:"left" 
+                }}>
                 <span>{j}</span>
-                {enviou && <span style={{ fontSize:11, color:"#66F277", background:"rgba(102,242,119,0.15)", padding:"2px 8px", borderRadius:20 }}>✓ enviado</span>}
+                {enviou && <span style={{ fontSize:11, color:"#66F277", background:"rgba(102,242,119,0.1)", padding:"2px 8px", borderRadius:20 }}>🔒 bloqueado</span>}
               </button>
             );
           })}
