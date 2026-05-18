@@ -39,25 +39,41 @@ function notaFinal(notas) {
 
 async function salvarFirebase(avaliador, dados) {
   const key = avaliador.replace(/[^a-zA-Z0-9]/g, "_");
-  const res = await fetch(`${FIREBASE_URL}/avaliacoes/${key}.json`, {
-    method: "PUT",
-    body: JSON.stringify({ avaliador, dados, timestamp: Date.now() })
-  });
-  return res.ok;
+  try {
+    const res = await fetch(`${FIREBASE_URL}/avaliacoes/${key}.json`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ avaliador, dados, timestamp: Date.now() })
+    });
+    const texto = await res.text();
+    console.log("Firebase resposta:", res.status, texto.slice(0, 100));
+    if (!res.ok) {
+      console.error("Firebase erro HTTP:", res.status, texto);
+      return false;
+    }
+    return true;
+  } catch(e) {
+    console.error("Firebase erro de rede:", e.message);
+    return false;
+  }
 }
 
 async function carregarFirebase() {
   try {
     const res = await fetch(`${FIREBASE_URL}/avaliacoes.json`);
-    if (!res.ok) return {};
-    const data = await res.json();
+    const texto = await res.text();
+    if (!res.ok || texto === "null" || !texto) return {};
+    const data = JSON.parse(texto);
     if (!data) return {};
     const resultado = {};
     Object.values(data).forEach(entry => {
       if (entry && entry.avaliador) resultado[entry.avaliador] = entry.dados;
     });
     return resultado;
-  } catch { return {}; }
+  } catch(e) {
+    console.error("Firebase carregar erro:", e.message);
+    return {};
+  }
 }
 
 // ── Seleção de avaliador ─────────────────────────────────────────────────────
