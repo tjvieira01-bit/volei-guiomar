@@ -350,6 +350,75 @@ function TelaAvaliacao({ avaliador, avaliacoes, setAvaliacoes, onEnviar, enviand
   );
 }
 
+
+// ── Exportar para CSV ────────────────────────────────────────────────────────
+function exportarCSV(consolidado, dados) {
+  const linhas = [];
+
+  // Cabeçalho principal
+  linhas.push("VOLEI GUIOMAR DE MELO — Avaliações Consolidadas");
+  linhas.push(`Exportado em: ${new Date().toLocaleDateString("pt-BR")} ${new Date().toLocaleTimeString("pt-BR")}`);
+  linhas.push("");
+
+  // ── ABA 1: Ranking consolidado
+  linhas.push("=== RANKING CONSOLIDADO ===");
+  linhas.push("Pos,Jogador,Técnica,Físico,Tática,Atitude,NOTA FINAL,Avaliações recebidas");
+  consolidado.forEach((j, i) => {
+    linhas.push([
+      i + 1,
+      j.nome,
+      j.medias.tecnica !== null ? j.medias.tecnica.toFixed(2) : "—",
+      j.medias.fisico  !== null ? j.medias.fisico.toFixed(2)  : "—",
+      j.medias.tatica  !== null ? j.medias.tatica.toFixed(2)  : "—",
+      j.medias.atitude !== null ? j.medias.atitude.toFixed(2) : "—",
+      j.nf !== null ? j.nf.toFixed(1) : "—",
+      j.qtd
+    ].join(","));
+  });
+
+  linhas.push("");
+  linhas.push("=== AVALIAÇÕES INDIVIDUAIS (quem avaliou quem) ===");
+  linhas.push("Avaliador,Jogador Avaliado,Técnica,Físico,Tática,Atitude,Nota Final");
+
+  Object.entries(dados).forEach(([avaliador, respostas]) => {
+    JOGADORES.forEach(jog => {
+      if (avaliador === jog) return;
+      const av = respostas[jog];
+      if (!av) return;
+      const nf = notaFinal(av);
+      linhas.push([
+        avaliador,
+        jog,
+        av.tecnica !== undefined ? Number(av.tecnica).toFixed(1) : "—",
+        av.fisico  !== undefined ? Number(av.fisico).toFixed(1)  : "—",
+        av.tatica  !== undefined ? Number(av.tatica).toFixed(1)  : "—",
+        av.atitude !== undefined ? Number(av.atitude).toFixed(1) : "—",
+        nf !== null ? nf.toFixed(1) : "—"
+      ].join(","));
+    });
+  });
+
+  linhas.push("");
+  linhas.push("=== NOTAS PARA O TEAMS GENERATION ===");
+  linhas.push("Jogador,Posição App,NOTA 0-10");
+  consolidado.forEach(j => {
+    linhas.push([
+      j.nome,
+      "",
+      j.nf !== null ? j.nf.toFixed(1) : "—"
+    ].join(","));
+  });
+
+  const csv = "\uFEFF" + linhas.join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `VGM_Avaliacoes_${new Date().toLocaleDateString("pt-BR").replace(/\//g,"-")}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 // ── Painel Admin ─────────────────────────────────────────────────────────────
 function TelaAdmin({ dados, onVoltar }) {
   const [tab, setTab] = useState("ranking");
@@ -479,6 +548,11 @@ function TelaAdmin({ dados, onVoltar }) {
         {tab==="ranking" && (
           <>
             <p style={{ fontSize:11, color:"#94a3b8", marginBottom:10, textAlign:"center" }}>Toque em um jogador para ver todas as avaliações recebidas</p>
+            <button
+              onClick={() => exportarCSV(consolidado, dados)}
+              style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:"12px", borderRadius:12, border:`1px solid ${OURO}`, background:`rgba(245,168,0,0.08)`, color:OURO, fontSize:13, fontWeight:700, cursor:"pointer", marginBottom:12 }}>
+              📥 Exportar planilha completa (.csv)
+            </button>
             <div style={{ background:BRANCO, borderRadius:14, border:"1px solid #e2e8f0", overflow:"hidden", marginBottom:10 }}>
               <div style={{ background:AZUL, padding:"10px 16px", display:"flex", gap:6 }}>
                 <span style={{ color:OURO, fontSize:10, fontWeight:700, flex:2 }}>JOGADOR</span>
