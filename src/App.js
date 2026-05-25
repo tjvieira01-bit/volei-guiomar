@@ -14,10 +14,13 @@ const JOGADORES = [
   "DIORGE","EBER","EDUARDO A","EDUARDO M","ELISA",
   "FABIULA","FLAVIA","HELENO","JEAN","JOAO",
   "LAISSE","LEO","LORRAYNE","MARCIM","MARIO",
-  "MATHEUS C","MATHEUS Q","MAXWELL","RODRIGO","RUBENS",
-  "SIDNEY","TAINAH","TIAGO","VAGNO","VINI ALVES",
-  "WAGNER","YUGUI","MURILO","VALTERLUCIO"
+  "MATHEUS C","MATHEUS Q","MAXWELL","MURILO","RODRIGO","RUBENS",
+  "SIDNEY","TAINAH","TIAGO","VAGNO","VALTERLUCIO","VINI ALVES",
+  "WAGNER","YUGUI"
 ];
+
+const NAO_VOTAM = ["MURILO","VALTERLUCIO"];
+const NOTAS_FIXAS = { "MURILO": 8.5, "VALTERLUCIO": 7.0 };
 
 const CRITERIOS = [
   { key:"tecnica", label:"Técnica",  icon:"⚡", peso:0.40, desc:"Saque, recepção, ataque, bloqueio, defesa" },
@@ -104,7 +107,7 @@ function TelaSelecao({ onSelect, jaAvaliaram, onAdmin, onValidacao, jaVotaramVal
         <p style={{ color:"rgba(255,255,255,0.55)", fontSize:13, marginTop:4 }}>Avaliação coletiva de jogadores</p>
       </div>
 
-      <div style={{ background:"rgba(255,255,255,0.07)", backdropFilter:"blur(10px)", borderRadius:20, padding:"1.5rem", width:"100%", maxWidth:400, border:`1px solid rgba(245,168,0,0.25)` }}>
+      <div style={{ background:"rgba(255,255,255,0.07)", backdropFilter:"blur(10px)", borderRadius:20, padding:"1.5rem", width:"100%", maxWidth:400, border:`1px solid rgba(245,168,0,0.25)`, display:"none" }}>
         <p style={{ color:"rgba(255,255,255,0.8)", fontSize:13, marginBottom:"1rem", textAlign:"center", fontWeight:500 }}>Selecione o seu nome para começar</p>
         <input
           placeholder="🔍 Buscar seu nome..."
@@ -134,10 +137,15 @@ function TelaSelecao({ onSelect, jaAvaliaram, onAdmin, onValidacao, jaVotaramVal
       </div>
 
       {onValidacao && (
-        <button onClick={onValidacao}
-          style={{ marginTop:12, width:"100%", maxWidth:400, padding:"12px", borderRadius:14, border:`1px solid ${OURO}`, background:`rgba(245,168,0,0.1)`, color:OURO, fontSize:13, fontWeight:700, cursor:"pointer" }}>
-          🗳️ Validar notas — 2ª rodada
-        </button>
+        <div style={{ width:"100%", maxWidth:400, marginTop:8 }}>
+          <p style={{ color:"rgba(255,255,255,0.6)", fontSize:12, textAlign:"center", marginBottom:10 }}>
+            Fase de validação aberta — confirme ou ajuste as notas dos colegas
+          </p>
+          <button onClick={onValidacao}
+            style={{ width:"100%", padding:"16px", borderRadius:14, border:"none", background:OURO, color:AZUL_ESC, fontSize:15, fontWeight:800, cursor:"pointer", boxShadow:"0 4px 16px rgba(245,168,0,0.4)" }}>
+            🗳️ Validar notas — 2ª rodada
+          </button>
+        </div>
       )}
 
       <button onClick={onAdmin}
@@ -482,7 +490,9 @@ function exportarCSV(consolidado, dados) {
 // ── Tela Seleção Validação ────────────────────────────────────────────────────
 function TelaSelecaoValidacao({ onSelect, jaVotaram, onVoltar }) {
   const [busca, setBusca] = useState("");
-  const filtrados = JOGADORES.filter(j => j.toLowerCase().includes(busca.toLowerCase()));
+  // Remover da lista de votantes quem não vota
+  const votantes = JOGADORES.filter(j => !NAO_VOTAM.includes(j));
+  const filtrados = votantes.filter(j => j.toLowerCase().includes(busca.toLowerCase()));
 
   return (
     <div style={{ minHeight:"100vh", background:`linear-gradient(160deg, ${AZUL_ESC} 0%, ${AZUL} 55%, #1e4db7 100%)`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"2rem 1rem" }}>
@@ -1047,6 +1057,11 @@ export default function App() {
   if (tela === "validacao") {
     // Calcular consolidado para validação
     const consolidado = JOGADORES.map(jog => {
+      // Notas fixas para jogadores novos
+      if (NOTAS_FIXAS[jog] !== undefined) {
+        const nf = NOTAS_FIXAS[jog];
+        return { nome:jog, medias:{ tecnica:nf, fisico:nf, tatica:nf, atitude:nf }, nf, notaFixa:true };
+      }
       const medias = {};
       CRITERIOS.forEach(c => {
         const arr = Object.entries(todasRespostas)
