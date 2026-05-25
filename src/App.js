@@ -6,6 +6,7 @@ const OURO     = "#f5a800";
 const OURO_CL  = "#ffd966";
 const BRANCO   = "#ffffff";
 const CZ_CL    = "#f1f5f9";
+const AM       = "#fffbea";
 
 const JOGADORES = [
   "AMANDA","ANA PAULA","BARBARA F","BARBARA O","BIANCA",
@@ -90,55 +91,6 @@ function Header({ titulo, onVoltar, direita }) {
 }
 
 
-async function salvarValidacao(votante, votos) {
-  const key = votante.replace(/[^a-zA-Z0-9]/g, "_");
-  try {
-    const res = await fetch(`${FIREBASE_URL}/validacao/${key}.json`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ votante, votos, timestamp: Date.now() })
-    });
-    return res.ok;
-  } catch(e) { return false; }
-}
-
-async function carregarValidacao() {
-  try {
-    const res = await fetch(`${FIREBASE_URL}/validacao.json`);
-    const texto = await res.text();
-    if (!res.ok || texto === "null" || !texto) return {};
-    const data = JSON.parse(texto);
-    if (!data) return {};
-    const resultado = {};
-    Object.values(data).forEach(entry => {
-      if (entry && entry.votante) resultado[entry.votante] = entry.votos;
-    });
-    return resultado;
-  } catch(e) { return {}; }
-}
-
-// Calcula nota vencedora para cada jogador
-function calcNotaValidada(jogador, votosValidacao, notaAtual) {
-  if (!notaAtual) return null;
-  const opcoes = [
-    Math.round((notaAtual - 0.5) * 2) / 2,
-    notaAtual,
-    Math.round((notaAtual + 0.5) * 2) / 2
-  ];
-  const contagem = { [opcoes[0]]: 0, [opcoes[1]]: 0, [opcoes[2]]: 0 };
-  Object.values(votosValidacao).forEach(votos => {
-    const v = votos[jogador];
-    if (v !== undefined && contagem[v] !== undefined) contagem[v]++;
-  });
-  let maxVotos = -1; let notaVencedora = notaAtual;
-  Object.entries(contagem).forEach(([nota, qtd]) => {
-    if (qtd > maxVotos || (qtd === maxVotos && Number(nota) === notaAtual)) {
-      maxVotos = qtd; notaVencedora = Number(nota);
-    }
-  });
-  return { notaVencedora, contagem, opcoes, totalVotos: Object.values(contagem).reduce((a,b)=>a+b,0) };
-}
-
 // ── Tela Seleção ─────────────────────────────────────────────────────────────
 function TelaSelecao({ onSelect, jaAvaliaram, onAdmin, onValidacao, jaVotaramValidacao }) {
   const [busca, setBusca] = useState("");
@@ -182,14 +134,7 @@ function TelaSelecao({ onSelect, jaAvaliaram, onAdmin, onValidacao, jaVotaramVal
       </div>
 
       {onValidacao && (
-        <button onClick={() => {
-            const nome = window.prompt("Digite seu nome exatamente como está na lista:");
-            if (nome && JOGADORES.includes(nome.toUpperCase().trim())) {
-              onValidacao(nome.toUpperCase().trim());
-            } else if (nome) {
-              alert("Nome não encontrado. Use exatamente como aparece na lista.");
-            }
-          }}
+        <button onClick={onValidacao}
           style={{ marginTop:12, width:"100%", maxWidth:400, padding:"12px", borderRadius:14, border:`1px solid ${OURO}`, background:`rgba(245,168,0,0.1)`, color:OURO, fontSize:13, fontWeight:700, cursor:"pointer" }}>
           🗳️ Validar notas — 2ª rodada
         </button>
@@ -415,6 +360,55 @@ function TelaAvaliacao({ avaliador, avaliacoes, setAvaliacoes, onEnviar, enviand
 }
 
 
+async function salvarValidacao(votante, votos) {
+  const key = votante.replace(/[^a-zA-Z0-9]/g, "_");
+  try {
+    const res = await fetch(`${FIREBASE_URL}/validacao/${key}.json`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ votante, votos, timestamp: Date.now() })
+    });
+    return res.ok;
+  } catch(e) { return false; }
+}
+
+async function carregarValidacao() {
+  try {
+    const res = await fetch(`${FIREBASE_URL}/validacao.json`);
+    const texto = await res.text();
+    if (!res.ok || texto === "null" || !texto) return {};
+    const data = JSON.parse(texto);
+    if (!data) return {};
+    const resultado = {};
+    Object.values(data).forEach(entry => {
+      if (entry && entry.votante) resultado[entry.votante] = entry.votos;
+    });
+    return resultado;
+  } catch(e) { return {}; }
+}
+
+// Calcula nota vencedora para cada jogador
+function calcNotaValidada(jogador, votosValidacao, notaAtual) {
+  if (!notaAtual) return null;
+  const opcoes = [
+    Math.round((notaAtual - 0.5) * 2) / 2,
+    notaAtual,
+    Math.round((notaAtual + 0.5) * 2) / 2
+  ];
+  const contagem = { [opcoes[0]]: 0, [opcoes[1]]: 0, [opcoes[2]]: 0 };
+  Object.values(votosValidacao).forEach(votos => {
+    const v = votos[jogador];
+    if (v !== undefined && contagem[v] !== undefined) contagem[v]++;
+  });
+  let maxVotos = -1; let notaVencedora = notaAtual;
+  Object.entries(contagem).forEach(([nota, qtd]) => {
+    if (qtd > maxVotos || (qtd === maxVotos && Number(nota) === notaAtual)) {
+      maxVotos = qtd; notaVencedora = Number(nota);
+    }
+  });
+  return { notaVencedora, contagem, opcoes, totalVotos: Object.values(contagem).reduce((a,b)=>a+b,0) };
+}
+
 // ── Exportar para CSV ────────────────────────────────────────────────────────
 function exportarCSV(consolidado, dados) {
   const linhas = [];
@@ -483,6 +477,59 @@ function exportarCSV(consolidado, dados) {
   URL.revokeObjectURL(url);
 }
 
+
+
+// ── Tela Seleção Validação ────────────────────────────────────────────────────
+function TelaSelecaoValidacao({ onSelect, jaVotaram, onVoltar }) {
+  const [busca, setBusca] = useState("");
+  const filtrados = JOGADORES.filter(j => j.toLowerCase().includes(busca.toLowerCase()));
+
+  return (
+    <div style={{ minHeight:"100vh", background:`linear-gradient(160deg, ${AZUL_ESC} 0%, ${AZUL} 55%, #1e4db7 100%)`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"2rem 1rem" }}>
+      <div style={{ marginBottom:"1.5rem", textAlign:"center" }}>
+        <img src="/VGM.jpg" alt="Logo" style={{ width:90, height:90, borderRadius:16, objectFit:"cover", boxShadow:`0 0 0 4px ${OURO}`, marginBottom:12 }} />
+        <h1 style={{ color:OURO, fontFamily:"'Syne',sans-serif", fontSize:20, fontWeight:800, margin:0 }}>2ª Rodada</h1>
+        <p style={{ color:"rgba(255,255,255,0.6)", fontSize:13, marginTop:4 }}>Validação das notas consolidadas</p>
+      </div>
+
+      <div style={{ background:"rgba(255,255,255,0.07)", backdropFilter:"blur(10px)", borderRadius:20, padding:"1.5rem", width:"100%", maxWidth:400, border:`1px solid rgba(245,168,0,0.25)` }}>
+        <p style={{ color:"rgba(255,255,255,0.8)", fontSize:13, marginBottom:"1rem", textAlign:"center", fontWeight:500 }}>
+          Selecione o seu nome para validar as notas
+        </p>
+        <input
+          placeholder="🔍 Buscar seu nome..."
+          value={busca}
+          onChange={e => setBusca(e.target.value)}
+          style={{ width:"100%", padding:"10px 14px", borderRadius:10, border:`1px solid rgba(245,168,0,0.3)`, background:"rgba(255,255,255,0.08)", color:BRANCO, fontSize:14, marginBottom:10, outline:"none", boxSizing:"border-box" }}
+        />
+        <div style={{ maxHeight:300, overflowY:"auto", display:"flex", flexDirection:"column", gap:6 }}>
+          {filtrados.map(j => {
+            const jaVotou = jaVotaram.includes(j);
+            return (
+              <button key={j}
+                onClick={() => {
+                  if (jaVotou) alert("🔒 Você já enviou sua validação. Obrigado!");
+                  else onSelect(j);
+                }}
+                style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 16px", borderRadius:10, border: jaVotou ? `1px solid rgba(245,168,0,0.2)` : `1px solid rgba(255,255,255,0.1)`, background: jaVotou ? "rgba(245,168,0,0.07)" : "rgba(255,255,255,0.05)", color: jaVotou ? "rgba(255,255,255,0.4)" : BRANCO, fontSize:14, fontWeight:600, cursor: jaVotou ? "not-allowed":"pointer", textAlign:"left" }}>
+                <span>{j}</span>
+                {jaVotou
+                  ? <span style={{ fontSize:11, color:OURO, background:"rgba(245,168,0,0.15)", padding:"2px 8px", borderRadius:20 }}>🔒 validado</span>
+                  : <span style={{ color:"rgba(255,255,255,0.3)", fontSize:16 }}>›</span>
+                }
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <button onClick={onVoltar}
+        style={{ marginTop:16, background:"none", border:`1px solid rgba(245,168,0,0.2)`, color:"rgba(255,255,255,0.35)", fontSize:11, borderRadius:8, padding:"6px 14px", cursor:"pointer" }}>
+        ← voltar
+      </button>
+    </div>
+  );
+}
 
 // ── Tela Validação de Notas ──────────────────────────────────────────────────
 function TelaValidacao({ votante, consolidado, votosValidacao, jaVotouValidacao, onEnviar, enviando, onVoltar }) {
@@ -951,10 +998,8 @@ export default function App() {
     setTela("avaliacao");
   }
 
-  function handleSelectValidacao(nome) {
-    setAvaliador(nome);
-    setJaVotouValidacao(!!votosValidacao[nome]);
-    setTela("validacao");
+  function handleSelectValidacao() {
+    setTela("selecao_validacao");
   }
 
   async function handleEnviarValidacao(votos) {
@@ -989,6 +1034,16 @@ export default function App() {
     <TelaAvaliacao avaliador={avaliador} avaliacoes={avaliacoes} setAvaliacoes={setAvaliacoes}
       onEnviar={handleEnviar} enviando={enviando} jaEnviou={jaEnviou} onVoltar={() => setTela("selecao")} />
   );
+  if (tela === "selecao_validacao") {
+    return (
+      <TelaSelecaoValidacao
+        onSelect={(nome) => { setAvaliador(nome); setJaVotouValidacao(!!votosValidacao[nome]); setTela("validacao"); }}
+        jaVotaram={jaVotaramValidacao}
+        onVoltar={() => setTela("selecao")}
+      />
+    );
+  }
+
   if (tela === "validacao") {
     // Calcular consolidado para validação
     const consolidado = JOGADORES.map(jog => {
