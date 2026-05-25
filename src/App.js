@@ -775,7 +775,7 @@ function TelaValidacao({ votante, consolidado, votosValidacao, jaVotouValidacao,
 }
 
 // ── Painel Admin ─────────────────────────────────────────────────────────────
-function TelaAdmin({ dados, onVoltar }) {
+function TelaAdmin({ dados, votosValidacao, onVoltar }) {
   const [tab, setTab] = useState("ranking");
   const [jogadorSelecionado, setJogadorSelecionado] = useState(null);
 
@@ -890,11 +890,11 @@ function TelaAdmin({ dados, onVoltar }) {
   return (
     <div style={{ minHeight:"100vh", background:CZ_CL }}>
       <Header titulo="Painel Administrador" onVoltar={onVoltar} />
-      <div style={{ background:AZUL, padding:"8px 1.25rem 12px", display:"flex", gap:8 }}>
-        {["ranking","participacao"].map(t => (
+      <div style={{ background:AZUL, padding:"8px 1.25rem 12px", display:"flex", gap:8, flexWrap:"wrap" }}>
+        {[["ranking","🏆 Ranking"],["resultado","🎯 Resultado Final"],["participacao","👥 Participação"]].map(([t,label]) => (
           <button key={t} onClick={() => setTab(t)}
-            style={{ padding:"6px 16px", borderRadius:20, border:"none", background:tab===t?OURO:"rgba(255,255,255,0.1)", color:tab===t?AZUL_ESC:BRANCO, fontSize:12, fontWeight:700, cursor:"pointer" }}>
-            {t==="ranking" ? "🏆 Ranking" : "👥 Participação"}
+            style={{ padding:"6px 14px", borderRadius:20, border: t==="resultado" && tab!==t ? `1px solid ${OURO}` : "none", background:tab===t ? (t==="resultado"?OURO:OURO) : (t==="resultado"?"rgba(245,168,0,0.15)":"rgba(255,255,255,0.1)"), color:tab===t?AZUL_ESC:(t==="resultado"?OURO:BRANCO), fontSize:12, fontWeight:700, cursor:"pointer" }}>
+            {label}
           </button>
         ))}
       </div>
@@ -936,6 +936,124 @@ function TelaAdmin({ dados, onVoltar }) {
             <div style={{ fontSize:10, color:"#94a3b8", textAlign:"center" }}>⚡×40% + 🏃×25% + 🧠×25% + 🤝×10% · notas extremas descartadas</div>
           </>
         )}
+
+        {tab==="resultado" && (() => {
+          // Calcular nota final validada para cada jogador
+          const resultadoFinal = [...consolidado].map(j => {
+            // Nota fixa para novos
+            if (NOTAS_FIXAS[j.nome] !== undefined) {
+              const nf = j.nf;
+              const votos = { [Math.round((nf-0.5)*2)/2]: 0, [nf]: 0, [Math.round((nf+0.5)*2)/2]: 0 };
+              Object.values(votosValidacao).forEach(v => {
+                const voto = v[j.nome];
+                if (voto !== undefined && votos[voto] !== undefined) votos[voto]++;
+              });
+              const totalVotos = Object.values(votos).reduce((a,b)=>a+b,0);
+              let maxV = -1; let notaFinalV = nf;
+              Object.entries(votos).forEach(([nota,qtd]) => {
+                if (qtd > maxV || (qtd === maxV && Number(nota) === nf)) { maxV=qtd; notaFinalV=Number(nota); }
+              });
+              return { ...j, notaFinalValidada: notaFinalV, totalVotos, votos, notaFixa:true };
+            }
+            if (!j.nf) return { ...j, notaFinalValidada: null, totalVotos:0, votos:{} };
+            const opcoes = [
+              Math.round((j.nf-0.5)*2)/2,
+              j.nf,
+              Math.round((j.nf+0.5)*2)/2
+            ];
+            const votos = { [opcoes[0]]:0, [opcoes[1]]:0, [opcoes[2]]:0 };
+            Object.values(votosValidacao).forEach(v => {
+              const voto = v[j.nome];
+              if (voto !== undefined && votos[voto] !== undefined) votos[voto]++;
+            });
+            const totalVotos = Object.values(votos).reduce((a,b)=>a+b,0);
+            let maxV = -1; let notaFinalV = j.nf;
+            Object.entries(votos).forEach(([nota,qtd]) => {
+              if (qtd > maxV || (qtd === maxV && Number(nota) === j.nf)) { maxV=qtd; notaFinalV=Number(nota); }
+            });
+            return { ...j, notaFinalValidada: notaFinalV, totalVotos, votos };
+          }).sort((a,b) => (b.notaFinalValidada||0)-(a.notaFinalValidada||0));
+
+          const votaramFase2 = Object.keys(votosValidacao).length;
+          const totalVotantes = JOGADORES.filter(j => !NAO_VOTAM.includes(j)).length;
+
+          return (
+            <div>
+              {/* Status */}
+              <div style={{ background:BRANCO, borderRadius:14, border:`1px solid ${OURO_CL}`, padding:"1rem 1.25rem", marginBottom:12, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <div>
+                  <div style={{ fontSize:11, color:"#94a3b8", fontWeight:600 }}>PARTICIPAÇÃO FASE 2</div>
+                  <div style={{ fontSize:22, fontWeight:800, color:AZUL }}>{votaramFase2}<span style={{ fontSize:13, color:"#94a3b8", fontWeight:400 }}>/{totalVotantes}</span></div>
+                </div>
+                <div style={{ textAlign:"right" }}>
+                  <div style={{ fontSize:11, color:"#94a3b8", fontWeight:600 }}>JOGADORES</div>
+                  <div style={{ fontSize:22, fontWeight:800, color:AZUL }}>{resultadoFinal.length}</div>
+                </div>
+                <button
+                  onClick={() => {
+                    const linhas = ["RESULTADO FINAL — VOLEI GUIOMAR DE MELO",""];
+                    linhas.push("Pos,Jogador,Nota Fase 1,Nota Final Validada,Votos,Status");
+                    resultadoFinal.forEach((j,i) => {
+                      const status = j.notaFinalValidada > j.nf ? "▲ Subiu" : j.notaFinalValidada < j.nf ? "▼ Desceu" : "✓ Mantida";
+                      linhas.push([i+1, j.nome, j.nf?.toFixed(1)||"—", j.notaFinalValidada?.toFixed(1)||"—", j.totalVotos, j.notaFixa?"Nota definida pelo admin":status].join(","));
+                    });
+                    const csv = "\uFEFF" + linhas.join("\n");
+                    const blob = new Blob([csv], { type:"text/csv;charset=utf-8;" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `VGM_Resultado_Final_${new Date().toLocaleDateString("pt-BR").replace(/\//g,"-")}.csv`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  style={{ padding:"8px 14px", borderRadius:10, border:`1px solid ${OURO}`, background:`rgba(245,168,0,0.1)`, color:OURO, fontSize:12, fontWeight:700, cursor:"pointer" }}>
+                  📥 Exportar
+                </button>
+              </div>
+
+              {/* Ranking final */}
+              <div style={{ background:BRANCO, borderRadius:14, border:"1px solid #e2e8f0", overflow:"hidden", marginBottom:10 }}>
+                <div style={{ background:AZUL, padding:"10px 16px", display:"flex", gap:6 }}>
+                  <span style={{ color:OURO, fontSize:10, fontWeight:700, width:20 }}>#</span>
+                  <span style={{ color:OURO, fontSize:10, fontWeight:700, flex:2 }}>JOGADOR</span>
+                  <span style={{ color:"rgba(255,255,255,0.5)", fontSize:10, flex:1, textAlign:"center" }}>FASE 1</span>
+                  <span style={{ color:"rgba(255,255,255,0.5)", fontSize:10, flex:1, textAlign:"center" }}>VOTOS</span>
+                  <span style={{ color:OURO, fontSize:10, fontWeight:700, flex:1, textAlign:"center" }}>FINAL</span>
+                </div>
+                {resultadoFinal.map((j,i) => {
+                  const mudou = j.notaFinalValidada !== j.nf;
+                  const subiu = j.notaFinalValidada > j.nf;
+                  return (
+                    <div key={j.nome} style={{ display:"flex", alignItems:"center", gap:6, padding:"10px 16px", borderBottom:i<resultadoFinal.length-1?"1px solid #f1f5f9":"none", background:i<3?`rgba(26,58,143,0.03)`:"transparent" }}>
+                      <span style={{ fontSize:11, fontWeight:700, color:i<3?AZUL:"#94a3b8", width:20 }}>{i+1}</span>
+                      <div style={{ flex:2 }}>
+                        <div style={{ fontSize:12, fontWeight:600, color:"#1e293b" }}>
+                          {j.nome}
+                          {j.notaFixa && <span style={{ fontSize:9, color:OURO, background:`rgba(245,168,0,0.15)`, borderRadius:4, padding:"1px 5px", marginLeft:5 }}>NOVO</span>}
+                        </div>
+                        {j.totalVotos > 0 && (
+                          <div style={{ fontSize:10, color:"#94a3b8", marginTop:2 }}>
+                            {Object.entries(j.votos).map(([nota,qtd]) => qtd > 0 ? `${Number(nota).toFixed(1)}→${qtd}v` : null).filter(Boolean).join("  ")}
+                          </div>
+                        )}
+                      </div>
+                      <span style={{ flex:1, textAlign:"center", fontSize:12, color:"#94a3b8" }}>{j.nf?.toFixed(1)||"—"}</span>
+                      <span style={{ flex:1, textAlign:"center", fontSize:11, color:"#94a3b8" }}>{j.totalVotos > 0 ? `${j.totalVotos} votos` : "—"}</span>
+                      <div style={{ flex:1, textAlign:"center" }}>
+                        <span style={{ background:notaColor(j.notaFinalValidada), borderRadius:8, padding:"3px 8px", fontSize:13, fontWeight:800, color:"#1e293b", border: mudou?`2px solid ${subiu?"#22c55e":"#f97316"}`:"none" }}>
+                          {j.notaFinalValidada?.toFixed(1)||"—"} {mudou?(subiu?"▲":"▼"):""}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ fontSize:10, color:"#94a3b8", textAlign:"center" }}>
+                ▲ subiu · ▼ desceu · sem indicador = nota mantida · NOVO = nota definida pelo admin
+              </div>
+            </div>
+          );
+        })()}
 
         {tab==="participacao" && (
           <div style={{ background:BRANCO, borderRadius:14, border:"1px solid #e2e8f0", overflow:"hidden" }}>
@@ -1039,7 +1157,7 @@ export default function App() {
     </div>
   );
 
-  if (tela==="admin") return <TelaAdmin dados={todasRespostas} onVoltar={() => setTela("selecao")} />;
+  if (tela==="admin") return <TelaAdmin dados={todasRespostas} votosValidacao={votosValidacao} onVoltar={() => setTela("selecao")} />;
   if (tela==="avaliacao") return (
     <TelaAvaliacao avaliador={avaliador} avaliacoes={avaliacoes} setAvaliacoes={setAvaliacoes}
       onEnviar={handleEnviar} enviando={enviando} jaEnviou={jaEnviou} onVoltar={() => setTela("selecao")} />
