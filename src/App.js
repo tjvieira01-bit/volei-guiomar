@@ -15,7 +15,7 @@ const JOGADORES = [
   "LAISSE","LEO","LORRAYNE","MARCIM","MARIO",
   "MATHEUS C","MATHEUS Q","MAXWELL","RODRIGO","RUBENS",
   "SIDNEY","TAINAH","TIAGO","VAGNO","VINI ALVES",
-  "WAGNER","YUGUI"
+  "WAGNER","YUGUI","MURILO","VALTERLUCIO"
 ];
 
 const CRITERIOS = [
@@ -89,8 +89,58 @@ function Header({ titulo, onVoltar, direita }) {
   );
 }
 
+
+async function salvarValidacao(votante, votos) {
+  const key = votante.replace(/[^a-zA-Z0-9]/g, "_");
+  try {
+    const res = await fetch(`${FIREBASE_URL}/validacao/${key}.json`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ votante, votos, timestamp: Date.now() })
+    });
+    return res.ok;
+  } catch(e) { return false; }
+}
+
+async function carregarValidacao() {
+  try {
+    const res = await fetch(`${FIREBASE_URL}/validacao.json`);
+    const texto = await res.text();
+    if (!res.ok || texto === "null" || !texto) return {};
+    const data = JSON.parse(texto);
+    if (!data) return {};
+    const resultado = {};
+    Object.values(data).forEach(entry => {
+      if (entry && entry.votante) resultado[entry.votante] = entry.votos;
+    });
+    return resultado;
+  } catch(e) { return {}; }
+}
+
+// Calcula nota vencedora para cada jogador
+function calcNotaValidada(jogador, votosValidacao, notaAtual) {
+  if (!notaAtual) return null;
+  const opcoes = [
+    Math.round((notaAtual - 0.5) * 2) / 2,
+    notaAtual,
+    Math.round((notaAtual + 0.5) * 2) / 2
+  ];
+  const contagem = { [opcoes[0]]: 0, [opcoes[1]]: 0, [opcoes[2]]: 0 };
+  Object.values(votosValidacao).forEach(votos => {
+    const v = votos[jogador];
+    if (v !== undefined && contagem[v] !== undefined) contagem[v]++;
+  });
+  let maxVotos = -1; let notaVencedora = notaAtual;
+  Object.entries(contagem).forEach(([nota, qtd]) => {
+    if (qtd > maxVotos || (qtd === maxVotos && Number(nota) === notaAtual)) {
+      maxVotos = qtd; notaVencedora = Number(nota);
+    }
+  });
+  return { notaVencedora, contagem, opcoes, totalVotos: Object.values(contagem).reduce((a,b)=>a+b,0) };
+}
+
 // ── Tela Seleção ─────────────────────────────────────────────────────────────
-function TelaSelecao({ onSelect, jaAvaliaram, onAdmin }) {
+function TelaSelecao({ onSelect, jaAvaliaram, onAdmin, onValidacao, jaVotaramValidacao }) {
   const [busca, setBusca] = useState("");
   const filtrados = JOGADORES.filter(j => j.toLowerCase().includes(busca.toLowerCase()));
 
@@ -131,8 +181,22 @@ function TelaSelecao({ onSelect, jaAvaliaram, onAdmin }) {
         </div>
       </div>
 
+      {onValidacao && (
+        <button onClick={() => {
+            const nome = window.prompt("Digite seu nome exatamente como está na lista:");
+            if (nome && JOGADORES.includes(nome.toUpperCase().trim())) {
+              onValidacao(nome.toUpperCase().trim());
+            } else if (nome) {
+              alert("Nome não encontrado. Use exatamente como aparece na lista.");
+            }
+          }}
+          style={{ marginTop:12, width:"100%", maxWidth:400, padding:"12px", borderRadius:14, border:`1px solid ${OURO}`, background:`rgba(245,168,0,0.1)`, color:OURO, fontSize:13, fontWeight:700, cursor:"pointer" }}>
+          🗳️ Validar notas — 2ª rodada
+        </button>
+      )}
+
       <button onClick={onAdmin}
-        style={{ marginTop:20, background:"none", border:`1px solid rgba(245,168,0,0.2)`, color:"rgba(255,255,255,0.3)", fontSize:11, borderRadius:8, padding:"6px 14px", cursor:"pointer" }}>
+        style={{ marginTop:12, background:"none", border:`1px solid rgba(245,168,0,0.2)`, color:"rgba(255,255,255,0.3)", fontSize:11, borderRadius:8, padding:"6px 14px", cursor:"pointer" }}>
         painel administrador
       </button>
     </div>
@@ -419,6 +483,240 @@ function exportarCSV(consolidado, dados) {
   URL.revokeObjectURL(url);
 }
 
+
+// ── Tela Validação de Notas ──────────────────────────────────────────────────
+function TelaValidacao({ votante, consolidado, votosValidacao, jaVotouValidacao, onEnviar, enviando, onVoltar }) {
+  const [votos, setVotos] = useState({});
+  const [view, setView] = useState("lista");
+  const [jogadorAtual, setJogadorAtual] = useState(null);
+
+  const lista = consolidado.filter(j => j.nome !== votante && j.nf !== null);
+  const preenchidos = lista.filter(j => votos[j.nome] !== undefined).length;
+  const pct = Math.round((preenchidos / lista.length) * 100);
+
+  function setVoto(jogador, nota) {
+    setVotos(prev => ({ ...prev, [jogador]: nota }));
+  }
+
+  // Vista: jogador individual
+  if (view === "jogador" && jogadorAtual) {
+    const jData = lista.find(j => j.nome === jogadorAtual);
+    if (!jData) return null;
+    const nf = jData.nf;
+    const opcoes = [
+      Math.round((nf - 0.5) * 2) / 2,
+      nf,
+      Math.round((nf + 0.5) * 2) / 2
+    ];
+    const votoAtual = votos[jogadorAtual];
+    const idx = lista.indexOf(jData);
+    const prev = idx > 0 ? lista[idx-1].nome : null;
+    const next = idx < lista.length-1 ? lista[idx+1].nome : null;
+
+    return (
+      <div style={{ minHeight:"100vh", background:CZ_CL }}>
+        <Header titulo={jogadorAtual} onVoltar={() => setView("lista")}
+          direita={
+            <div style={{ background: votoAtual !== undefined ? OURO : "rgba(255,255,255,0.1)", borderRadius:10, padding:"5px 14px", textAlign:"center", minWidth:52, border: votoAtual !== undefined ? "none" : "1px solid rgba(255,255,255,0.2)" }}>
+              <div style={{ fontSize:9, color: votoAtual !== undefined ? AZUL_ESC : "rgba(255,255,255,0.5)", fontWeight:700 }}>SEU VOTO</div>
+              <div style={{ fontSize:20, color: votoAtual !== undefined ? AZUL_ESC : "rgba(255,255,255,0.4)", fontWeight:800, lineHeight:1 }}>
+                {votoAtual !== undefined ? votoAtual.toFixed(1) : "—"}
+              </div>
+            </div>
+          }
+        />
+        <div style={{ padding:"1rem" }}>
+          {/* Nota atual */}
+          <div style={{ background:BRANCO, borderRadius:16, padding:"1.25rem", marginBottom:12, border:`1px solid ${OURO_CL}`, textAlign:"center" }}>
+            <div style={{ fontSize:11, color:"#94a3b8", fontWeight:600, letterSpacing:1, marginBottom:6 }}>NOTA CONSOLIDADA ATUAL</div>
+            <div style={{ fontSize:48, fontWeight:800, color:AZUL, lineHeight:1 }}>{nf.toFixed(1)}</div>
+            <div style={{ fontSize:11, color:"#94a3b8", marginTop:6 }}>
+              ⚡ {jData.medias.tecnica?.toFixed(1)||"—"} &nbsp;
+              🏃 {jData.medias.fisico?.toFixed(1)||"—"} &nbsp;
+              🧠 {jData.medias.tatica?.toFixed(1)||"—"} &nbsp;
+              🤝 {jData.medias.atitude?.toFixed(1)||"—"}
+            </div>
+          </div>
+
+          {/* Opções de voto */}
+          <div style={{ background:BRANCO, borderRadius:16, padding:"1.25rem", border:"1px solid #e2e8f0" }}>
+            <div style={{ fontSize:13, fontWeight:700, color:AZUL_ESC, marginBottom:14, textAlign:"center" }}>
+              Qual nota você acha que representa melhor {jogadorAtual}?
+            </div>
+            <div style={{ display:"flex", gap:10 }}>
+              {opcoes.map((op, i) => {
+                const labels = ["📉 Muito alto", "✅ Está certa", "📈 Pouco baixo"];
+                const selecionado = votoAtual === op;
+                return (
+                  <button key={op} onClick={() => setVoto(jogadorAtual, op)}
+                    style={{ flex:1, padding:"16px 8px", borderRadius:14, border: selecionado ? `2px solid ${AZUL}` : "2px solid #e2e8f0", background: selecionado ? AZUL : BRANCO, cursor:"pointer", textAlign:"center", transition:"all .15s" }}>
+                    <div style={{ fontSize:24, fontWeight:800, color: selecionado ? OURO : "#1e293b", marginBottom:4 }}>{op.toFixed(1)}</div>
+                    <div style={{ fontSize:10, color: selecionado ? "rgba(255,255,255,0.7)" : "#94a3b8", fontWeight:600 }}>{labels[i]}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Navegação */}
+        <div style={{ display:"flex", gap:10, padding:"0 1rem 1.5rem" }}>
+          {prev && (
+            <button onClick={() => setJogadorAtual(prev)}
+              style={{ flex:1, padding:12, borderRadius:12, border:`1px solid #e2e8f0`, background:BRANCO, color:AZUL, fontSize:12, fontWeight:600, cursor:"pointer" }}>
+              ← {prev}
+            </button>
+          )}
+          {next ? (
+            <button onClick={() => { if(votoAtual !== undefined) setJogadorAtual(next); }} disabled={votoAtual === undefined}
+              style={{ flex:1, padding:12, borderRadius:12, border:"none", background: votoAtual !== undefined ? AZUL : "#e2e8f0", color: votoAtual !== undefined ? OURO : "#94a3b8", fontSize:12, fontWeight:700, cursor: votoAtual !== undefined ? "pointer":"not-allowed", opacity: votoAtual !== undefined ? 1:0.7 }}>
+              {votoAtual === undefined ? "⚠️ Vote antes de avançar" : `${next} →`}
+            </button>
+          ) : (
+            <button onClick={() => { if(votoAtual !== undefined) setView("resumo"); }} disabled={votoAtual === undefined}
+              style={{ flex:1, padding:12, borderRadius:12, border:"none", background: votoAtual !== undefined ? OURO : "#e2e8f0", color: votoAtual !== undefined ? AZUL_ESC : "#94a3b8", fontSize:13, fontWeight:700, cursor: votoAtual !== undefined ? "pointer":"not-allowed", opacity: votoAtual !== undefined ? 1:0.7 }}>
+              {votoAtual === undefined ? "⚠️ Vote antes de avançar" : "Ver resumo ✓"}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Vista: resumo
+  if (view === "resumo") {
+    const completos = lista.filter(j => votos[j.nome] !== undefined);
+    const incompletos = lista.filter(j => votos[j.nome] === undefined);
+    return (
+      <div style={{ minHeight:"100vh", background:CZ_CL }}>
+        <Header titulo="Resumo da validação" onVoltar={() => setView("lista")} />
+        <div style={{ padding:"1rem" }}>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:14 }}>
+            <div style={{ background:BRANCO, borderRadius:14, padding:"1rem", border:`1px solid ${OURO_CL}`, textAlign:"center" }}>
+              <div style={{ fontSize:28, fontWeight:800, color:AZUL }}>{completos.length}</div>
+              <div style={{ fontSize:12, color:"#64748b" }}>votados</div>
+            </div>
+            <div style={{ background:BRANCO, borderRadius:14, padding:"1rem", border:"1px solid #e2e8f0", textAlign:"center" }}>
+              <div style={{ fontSize:28, fontWeight:800, color: incompletos.length>0?"#f97316":"#22c55e" }}>{incompletos.length}</div>
+              <div style={{ fontSize:12, color:"#64748b" }}>pendentes</div>
+            </div>
+          </div>
+
+          {incompletos.length > 0 && (
+            <div style={{ background:"#fff7ed", borderRadius:14, padding:"1rem 1.25rem", marginBottom:14, border:"1px solid #fed7aa" }}>
+              <div style={{ fontWeight:700, fontSize:13, color:"#c2410c", marginBottom:8 }}>⚠️ Faltam votar — toque para completar</div>
+              {incompletos.map(j => (
+                <button key={j.nome} onClick={() => { setJogadorAtual(j.nome); setView("jogador"); }}
+                  style={{ display:"block", width:"100%", textAlign:"left", padding:"7px 0", background:"none", border:"none", borderBottom:"1px solid #fed7aa", color:"#c2410c", fontSize:13, cursor:"pointer" }}>
+                  → {j.nome} (nota atual: {j.nf.toFixed(1)})
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div style={{ background:BRANCO, borderRadius:14, border:"1px solid #e2e8f0", overflow:"hidden", marginBottom:14 }}>
+            <div style={{ background:AZUL, padding:"10px 16px", display:"flex", justifyContent:"space-between" }}>
+              <span style={{ color:OURO, fontSize:11, fontWeight:700 }}>SEUS VOTOS</span>
+              <span style={{ color:"rgba(255,255,255,0.5)", fontSize:11 }}>{completos.length}/{lista.length}</span>
+            </div>
+            {completos.map((j,i) => {
+              const voto = votos[j.nome];
+              const mudou = voto !== j.nf;
+              return (
+                <div key={j.nome} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"9px 16px", borderBottom:i<completos.length-1?"1px solid #f1f5f9":"none" }}>
+                  <span style={{ fontSize:13, fontWeight:500 }}>{j.nome}</span>
+                  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                    <span style={{ fontSize:12, color:"#94a3b8" }}>{j.nf.toFixed(1)}</span>
+                    {mudou && <span style={{ fontSize:12, color:"#94a3b8" }}>→</span>}
+                    <span style={{ background: mudou ? notaColor(voto) : "#f1f5f9", borderRadius:8, padding:"3px 10px", fontSize:13, fontWeight:700, color:"#1e293b" }}>
+                      {voto.toFixed(1)} {mudou ? (voto > j.nf ? "▲" : "▼") : "✓"}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {jaVotouValidacao ? (
+            <div style={{ background:"#f0fdf4", border:"1px solid #86efac", borderRadius:14, padding:"1.5rem", textAlign:"center" }}>
+              <div style={{ fontSize:36, marginBottom:8 }}>✅</div>
+              <div style={{ fontWeight:700, color:"#166534", fontSize:15 }}>Validação enviada!</div>
+              <div style={{ color:"#16a34a", fontSize:13, marginTop:4 }}>Obrigado, {votante}!</div>
+              <button onClick={onVoltar} style={{ marginTop:14, padding:"10px 24px", borderRadius:10, border:"none", background:AZUL, color:OURO, fontSize:13, fontWeight:700, cursor:"pointer" }}>
+                Voltar ao início
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => onEnviar(votos)} disabled={enviando || completos.length===0}
+              style={{ width:"100%", padding:16, borderRadius:14, border:"none", background: completos.length>0 ? AZUL:"#e2e8f0", color: completos.length>0 ? OURO:"#94a3b8", fontSize:16, fontWeight:700, cursor: completos.length>0?"pointer":"default" }}>
+              {enviando ? "Enviando..." : `Confirmar votos (${completos.length}/${lista.length})`}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Vista: lista
+  return (
+    <div style={{ minHeight:"100vh", background:CZ_CL }}>
+      <Header titulo="Validação de Notas"
+        direita={
+          <button onClick={() => setView("resumo")}
+            style={{ background:OURO, border:"none", borderRadius:10, padding:"7px 14px", color:AZUL_ESC, fontSize:12, fontWeight:700, cursor:"pointer" }}>
+            Resumo →
+          </button>
+        }
+      />
+      <div style={{ background:AZUL, padding:"8px 1.25rem 10px" }}>
+        <div style={{ background:"rgba(255,255,255,0.15)", borderRadius:20, height:7, overflow:"hidden" }}>
+          <div style={{ background:OURO, height:"100%", width:`${pct}%`, borderRadius:20, transition:"width .4s" }} />
+        </div>
+        <div style={{ color:"rgba(255,255,255,0.6)", fontSize:11, marginTop:4, textAlign:"right" }}>
+          {preenchidos}/{lista.length} votados — {votante}
+        </div>
+      </div>
+
+      <div style={{ background:AM, padding:"10px 16px", margin:"0" }}>
+        <div style={{ fontSize:12, color:"#92610a", fontWeight:600, textAlign:"center" }}>
+          Veja a nota atual de cada colega e vote: manter, subir ou descer 0,5 ponto
+        </div>
+      </div>
+
+      <div style={{ padding:"0.75rem" }}>
+        {lista.map((j,idx) => {
+          const votado = votos[j.nome] !== undefined;
+          const voto = votos[j.nome];
+          const mudou = votado && voto !== j.nf;
+          return (
+            <button key={j.nome} onClick={() => { setJogadorAtual(j.nome); setView("jogador"); }}
+              style={{ display:"flex", alignItems:"center", width:"100%", padding:"11px 14px", marginBottom:7, background:BRANCO, borderRadius:14, border: votado ? `1px solid ${OURO_CL}` : "1px solid #e2e8f0", cursor:"pointer", gap:12, boxShadow:"0 1px 3px rgba(0,0,0,0.04)" }}>
+              <div style={{ width:26, height:26, borderRadius:7, background: votado ? AZUL : CZ_CL, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700, color: votado ? OURO : "#64748b", flexShrink:0 }}>
+                {idx+1}
+              </div>
+              <div style={{ flex:1, textAlign:"left" }}>
+                <div style={{ fontWeight:600, fontSize:13, color:"#1e293b" }}>{j.nome}</div>
+                <div style={{ fontSize:11, color:"#94a3b8", marginTop:2 }}>nota atual: {j.nf.toFixed(1)}</div>
+              </div>
+              {votado ? (
+                <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                  <span style={{ fontSize:11, color:"#94a3b8" }}>{j.nf.toFixed(1)}</span>
+                  {mudou && <span style={{ color:"#94a3b8", fontSize:11 }}>→</span>}
+                  <span style={{ background: notaColor(voto), borderRadius:8, padding:"4px 10px", fontSize:13, fontWeight:800, color:"#1e293b" }}>
+                    {voto.toFixed(1)} {mudou ? (voto > j.nf ? "▲":"▼") : "✓"}
+                  </span>
+                </div>
+              ) : (
+                <span style={{ color:"#cbd5e1", fontSize:18 }}>›</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── Painel Admin ─────────────────────────────────────────────────────────────
 function TelaAdmin({ dados, onVoltar }) {
   const [tab, setTab] = useState("ranking");
@@ -616,11 +914,18 @@ export default function App() {
   const [jaEnviou, setJaEnviou] = useState(false);
   const [jaAvaliaram, setJaAvaliaram] = useState([]);
   const [carregando, setCarregando] = useState(true);
+  const [votosValidacao, setVotosValidacao] = useState({});
+  const [jaVotaramValidacao, setJaVotaramValidacao] = useState([]);
+  const [consolidadoCache, setConsolidadoCache] = useState([]);
+  const [enviandoValidacao, setEnviandoValidacao] = useState(false);
+  const [jaVotouValidacao, setJaVotouValidacao] = useState(false);
 
   useEffect(() => {
-    carregarFirebase().then(dados => {
+    Promise.all([carregarFirebase(), carregarValidacao()]).then(([dados, validacao]) => {
       setTodasRespostas(dados);
       setJaAvaliaram(Object.keys(dados));
+      setVotosValidacao(validacao);
+      setJaVotaramValidacao(Object.keys(validacao));
       setCarregando(false);
     });
   }, []);
@@ -646,6 +951,26 @@ export default function App() {
     setTela("avaliacao");
   }
 
+  function handleSelectValidacao(nome) {
+    setAvaliador(nome);
+    setJaVotouValidacao(!!votosValidacao[nome]);
+    setTela("validacao");
+  }
+
+  async function handleEnviarValidacao(votos) {
+    setEnviandoValidacao(true);
+    const ok = await salvarValidacao(avaliador, votos);
+    if (ok) {
+      const atualizados = { ...votosValidacao, [avaliador]: votos };
+      setVotosValidacao(atualizados);
+      setJaVotaramValidacao(Object.keys(atualizados));
+      setJaVotouValidacao(true);
+    } else {
+      alert("Erro ao salvar. Tente novamente.");
+    }
+    setEnviandoValidacao(false);
+  }
+
   function acessarAdmin() {
     const senhaDigitada = window.prompt("Acesso restrito. Digite a senha:");
     if (senhaDigitada === "TiagoAdmin") setTela("admin");
@@ -664,5 +989,46 @@ export default function App() {
     <TelaAvaliacao avaliador={avaliador} avaliacoes={avaliacoes} setAvaliacoes={setAvaliacoes}
       onEnviar={handleEnviar} enviando={enviando} jaEnviou={jaEnviou} onVoltar={() => setTela("selecao")} />
   );
-  return <TelaSelecao onSelect={handleSelect} jaAvaliaram={jaAvaliaram} onAdmin={acessarAdmin} />;
+  if (tela === "validacao") {
+    // Calcular consolidado para validação
+    const consolidado = JOGADORES.map(jog => {
+      const medias = {};
+      CRITERIOS.forEach(c => {
+        const arr = Object.entries(todasRespostas)
+          .filter(([av]) => av !== jog)
+          .map(([,av]) => av[jog]?.[c.key])
+          .filter(v => v !== undefined && v !== null && v !== "")
+          .map(Number);
+        if (arr.length >= 3) {
+          const s = [...arr].sort((a,b)=>a-b).slice(1,-1);
+          medias[c.key] = s.reduce((a,b)=>a+b,0)/s.length;
+        } else if (arr.length > 0) {
+          medias[c.key] = arr.reduce((a,b)=>a+b,0)/arr.length;
+        } else { medias[c.key] = null; }
+      });
+      const vals = CRITERIOS.map(c => medias[c.key]).filter(v => v !== null);
+      const nf = vals.length === 4 ? Math.round(CRITERIOS.reduce((acc,c)=>acc+(medias[c.key]*c.peso),0)*2)/2 : null;
+      return { nome:jog, medias, nf };
+    }).filter(j => j.nf !== null);
+
+    return (
+      <TelaValidacao
+        votante={avaliador}
+        consolidado={consolidado}
+        votosValidacao={votosValidacao}
+        jaVotouValidacao={jaVotouValidacao}
+        onEnviar={handleEnviarValidacao}
+        enviando={enviandoValidacao}
+        onVoltar={() => setTela("selecao")}
+      />
+    );
+  }
+
+  return <TelaSelecao
+    onSelect={handleSelect}
+    jaAvaliaram={jaAvaliaram}
+    onAdmin={acessarAdmin}
+    onValidacao={handleSelectValidacao}
+    jaVotaramValidacao={jaVotaramValidacao}
+  />;
 }
