@@ -543,7 +543,11 @@ function TelaSelecaoValidacao({ onSelect, jaVotaram, onVoltar }) {
 
 // ── Tela Validação de Notas ──────────────────────────────────────────────────
 function TelaValidacao({ votante, consolidado, votosValidacao, jaVotouValidacao, onEnviar, enviando, onVoltar }) {
-  const [votos, setVotos] = useState({});
+  // Carregar votos já salvos do votante (se existirem)
+  const [votos, setVotos] = useState(() => {
+    const salvos = votosValidacao[votante] || {};
+    return { ...salvos };
+  });
   const [view, setView] = useState("lista");
   const [jogadorAtual, setJogadorAtual] = useState(null);
 
@@ -706,24 +710,22 @@ function TelaValidacao({ votante, consolidado, votosValidacao, jaVotouValidacao,
               </button>
             </div>
           ) : (
-            {(() => {
-              const novosPreenchidos = novos.every(j => votos[j.nome] !== undefined);
-              const podeEnviar = completos.length > 0 && novosPreenchidos;
-              const faltamNovos = novos.filter(j => votos[j.nome] === undefined);
-              return (
-                <div>
-                  {faltamNovos.length > 0 && (
-                    <div style={{ background:`rgba(245,168,0,0.1)`, border:`1px solid ${OURO}`, borderRadius:12, padding:"10px 14px", marginBottom:10, fontSize:12, color:OURO, fontWeight:600, textAlign:"center" }}>
-                      ⚠️ Vote em {faltamNovos.map(j=>j.nome).join(" e ")} antes de enviar
-                    </div>
-                  )}
-                  <button onClick={() => onEnviar(votos)} disabled={enviando || !podeEnviar}
-                    style={{ width:"100%", padding:16, borderRadius:14, border:"none", background: podeEnviar ? AZUL:"#e2e8f0", color: podeEnviar ? OURO:"#94a3b8", fontSize:16, fontWeight:700, cursor: podeEnviar?"pointer":"default" }}>
-                    {enviando ? "Enviando..." : `Confirmar votos (${completos.length}/${lista.length})`}
-                  </button>
+            <div>
+              {novos.some(j => votos[j.nome] === undefined) && (
+                <div style={{ background:`rgba(245,168,0,0.1)`, border:`1px solid ${OURO}`, borderRadius:12, padding:"10px 14px", marginBottom:10, fontSize:12, color:OURO, fontWeight:600, textAlign:"center" }}>
+                  ⚠️ Vote em {novos.filter(j=>votos[j.nome]===undefined).map(j=>j.nome).join(" e ")} antes de enviar
                 </div>
-              );
-            })()}
+              )}
+              <button onClick={() => onEnviar(votos)}
+                disabled={enviando || completos.length===0 || novos.some(j=>votos[j.nome]===undefined)}
+                style={{ width:"100%", padding:16, borderRadius:14, border:"none",
+                  background: (completos.length>0 && novos.every(j=>votos[j.nome]!==undefined)) ? AZUL:"#e2e8f0",
+                  color: (completos.length>0 && novos.every(j=>votos[j.nome]!==undefined)) ? OURO:"#94a3b8",
+                  fontSize:16, fontWeight:700,
+                  cursor: (completos.length>0 && novos.every(j=>votos[j.nome]!==undefined))?"pointer":"default" }}>
+                {enviando ? "Enviando..." : `Confirmar votos (${completos.length}/${lista.length})`}
+              </button>
+            </div>
           )}
         </div>
       </div>
