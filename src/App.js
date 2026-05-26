@@ -837,6 +837,11 @@ function TelaAdmin({ dados, votosValidacao, onVoltar }) {
   const [jogadorSelecionado, setJogadorSelecionado] = useState(null);
 
   const consolidado = JOGADORES.map(jog => {
+    // Notas fixas para novos integrantes
+    if (NOTAS_FIXAS[jog] !== undefined) {
+      const nf = NOTAS_FIXAS[jog];
+      return { nome:jog, medias:{ tecnica:nf, fisico:nf, tatica:nf, atitude:nf }, nf, notaFixa:true, qtd:0 };
+    }
     const medias = {};
     CRITERIOS.forEach(c => {
       const arr = Object.entries(dados)
