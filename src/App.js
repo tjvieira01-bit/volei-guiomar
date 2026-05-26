@@ -548,6 +548,8 @@ function TelaValidacao({ votante, consolidado, votosValidacao, jaVotouValidacao,
   const [jogadorAtual, setJogadorAtual] = useState(null);
 
   const lista = consolidado.filter(j => j.nome !== votante && j.nf !== null);
+  const novos = lista.filter(j => NOTAS_FIXAS[j.nome] !== undefined);
+  const veteranos = lista.filter(j => NOTAS_FIXAS[j.nome] === undefined);
   const preenchidos = lista.filter(j => votos[j.nome] !== undefined).length;
   const pct = Math.round((preenchidos / lista.length) * 100);
 
@@ -704,10 +706,24 @@ function TelaValidacao({ votante, consolidado, votosValidacao, jaVotouValidacao,
               </button>
             </div>
           ) : (
-            <button onClick={() => onEnviar(votos)} disabled={enviando || completos.length===0}
-              style={{ width:"100%", padding:16, borderRadius:14, border:"none", background: completos.length>0 ? AZUL:"#e2e8f0", color: completos.length>0 ? OURO:"#94a3b8", fontSize:16, fontWeight:700, cursor: completos.length>0?"pointer":"default" }}>
-              {enviando ? "Enviando..." : `Confirmar votos (${completos.length}/${lista.length})`}
-            </button>
+            {(() => {
+              const novosPreenchidos = novos.every(j => votos[j.nome] !== undefined);
+              const podeEnviar = completos.length > 0 && novosPreenchidos;
+              const faltamNovos = novos.filter(j => votos[j.nome] === undefined);
+              return (
+                <div>
+                  {faltamNovos.length > 0 && (
+                    <div style={{ background:`rgba(245,168,0,0.1)`, border:`1px solid ${OURO}`, borderRadius:12, padding:"10px 14px", marginBottom:10, fontSize:12, color:OURO, fontWeight:600, textAlign:"center" }}>
+                      ⚠️ Vote em {faltamNovos.map(j=>j.nome).join(" e ")} antes de enviar
+                    </div>
+                  )}
+                  <button onClick={() => onEnviar(votos)} disabled={enviando || !podeEnviar}
+                    style={{ width:"100%", padding:16, borderRadius:14, border:"none", background: podeEnviar ? AZUL:"#e2e8f0", color: podeEnviar ? OURO:"#94a3b8", fontSize:16, fontWeight:700, cursor: podeEnviar?"pointer":"default" }}>
+                    {enviando ? "Enviando..." : `Confirmar votos (${completos.length}/${lista.length})`}
+                  </button>
+                </div>
+              );
+            })()}
           )}
         </div>
       </div>
@@ -741,7 +757,46 @@ function TelaValidacao({ votante, consolidado, votosValidacao, jaVotouValidacao,
       </div>
 
       <div style={{ padding:"0.75rem" }}>
-        {lista.map((j,idx) => {
+        {/* Novos integrantes — destaque no topo */}
+        {novos.length > 0 && (
+          <div style={{ marginBottom:12 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8, padding:"6px 14px", background:`rgba(245,168,0,0.12)`, borderRadius:10, border:`1px solid ${OURO}` }}>
+              <span style={{ fontSize:13 }}>🆕</span>
+              <span style={{ fontSize:12, fontWeight:700, color:OURO }}>Novos integrantes — vote aqui primeiro!</span>
+            </div>
+            {novos.map((j,idx) => {
+              const votado = votos[j.nome] !== undefined;
+              const voto = votos[j.nome];
+              const mudou = votado && voto !== j.nf;
+              return (
+                <button key={j.nome} onClick={() => { setJogadorAtual(j.nome); setView("jogador"); }}
+                  style={{ display:"flex", alignItems:"center", width:"100%", padding:"11px 14px", marginBottom:7, background:BRANCO, borderRadius:14, border: votado ? `2px solid ${OURO}` : `2px dashed ${OURO}`, cursor:"pointer", gap:12 }}>
+                  <div style={{ width:26, height:26, borderRadius:7, background: votado ? AZUL : `rgba(245,168,0,0.15)`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700, color: votado ? OURO : OURO, flexShrink:0 }}>
+                    {votado ? "✓" : "!"}
+                  </div>
+                  <div style={{ flex:1, textAlign:"left" }}>
+                    <div style={{ fontWeight:700, fontSize:13, color:"#1e293b" }}>{j.nome} <span style={{ fontSize:10, color:OURO, background:`rgba(245,168,0,0.15)`, borderRadius:4, padding:"1px 5px" }}>NOVO</span></div>
+                    <div style={{ fontSize:11, color:"#94a3b8", marginTop:2 }}>nota atual: {j.nf.toFixed(1)} — confirme ou ajuste</div>
+                  </div>
+                  {votado ? (
+                    <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                      <span style={{ fontSize:11, color:"#94a3b8" }}>{j.nf.toFixed(1)}</span>
+                      {mudou && <span style={{ color:"#94a3b8", fontSize:11 }}>→</span>}
+                      <span style={{ background:notaColor(voto), borderRadius:8, padding:"4px 10px", fontSize:13, fontWeight:800, color:"#1e293b", border:`2px solid ${OURO}` }}>
+                        {voto.toFixed(1)} {mudou?(voto>j.nf?"▲":"▼"):"✓"}
+                      </span>
+                    </div>
+                  ) : (
+                    <span style={{ color:OURO, fontSize:18 }}>›</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Veteranos */}
+        {veteranos.map((j,idx) => {
           const votado = votos[j.nome] !== undefined;
           const voto = votos[j.nome];
           const mudou = votado && voto !== j.nf;
@@ -759,8 +814,8 @@ function TelaValidacao({ votante, consolidado, votosValidacao, jaVotouValidacao,
                 <div style={{ display:"flex", alignItems:"center", gap:6 }}>
                   <span style={{ fontSize:11, color:"#94a3b8" }}>{j.nf.toFixed(1)}</span>
                   {mudou && <span style={{ color:"#94a3b8", fontSize:11 }}>→</span>}
-                  <span style={{ background: notaColor(voto), borderRadius:8, padding:"4px 10px", fontSize:13, fontWeight:800, color:"#1e293b" }}>
-                    {voto.toFixed(1)} {mudou ? (voto > j.nf ? "▲":"▼") : "✓"}
+                  <span style={{ background:notaColor(voto), borderRadius:8, padding:"4px 10px", fontSize:13, fontWeight:800, color:"#1e293b" }}>
+                    {voto.toFixed(1)} {mudou?(voto>j.nf?"▲":"▼"):"✓"}
                   </span>
                 </div>
               ) : (
