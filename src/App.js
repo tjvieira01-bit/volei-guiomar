@@ -13,14 +13,14 @@ const JOGADORES = [
   "BRUNNA","CAMILLA","CARMEN","CHARLES","DILLEYGOR",
   "DIORGE","EBER","EDUARDO A","EDUARDO M","ELISA",
   "FABIULA","FLAVIA","HELENO","JEAN","JOAO",
-  "LAISSE","LEO","LORRAYNE","MARCIM","MARIO",
+  "LAISSE","LEO","LORRAYNE","LUCIO","MARCIM","MARIO",
   "MATHEUS C","MATHEUS Q","MAXWELL","MURILO","RODRIGO","RUBENS",
-  "SIDNEY","TAINAH","TIAGO","VAGNO","VALTERLUCIO","VINI ALVES",
+  "SIDNEY","TAINAH","TIAGO","VAGNO","VINI ALVES",
   "WAGNER","YUGUI"
 ];
 
-const NAO_VOTAM = ["MURILO","VALTERLUCIO"];
-const NOTAS_FIXAS = { "MURILO": 8.5, "VALTERLUCIO": 7.0 };
+const NAO_VOTAM = ["MURILO","LUCIO"];
+const NOTAS_FIXAS = { "MURILO": 8.5, "LUCIO": 7.0 };
 
 const CRITERIOS = [
   { key:"tecnica", label:"Técnica",  icon:"⚡", peso:0.40, desc:"Saque, recepção, ataque, bloqueio, defesa" },
@@ -991,12 +991,75 @@ function TelaAdmin({ dados, votosValidacao, onVoltar }) {
                 </div>
                 <button
                   onClick={() => {
-                    const linhas = ["RESULTADO FINAL — VOLEI GUIOMAR DE MELO",""];
-                    linhas.push("Pos,Jogador,Nota Fase 1,Nota Final Validada,Votos,Status");
+                    const linhas = [];
+                    const sep = ";"; // separador compatível com Excel BR
+
+                    // ── SEÇÃO 1: Resumo ranking final
+                    linhas.push("RESULTADO FINAL — VOLEI GUIOMAR DE MELO");
+                    linhas.push(`Exportado em: ${new Date().toLocaleDateString("pt-BR")} ${new Date().toLocaleTimeString("pt-BR")}`);
+                    linhas.push(`Participação fase 2: ${Object.keys(votosValidacao).length} de ${JOGADORES.filter(j=>!NAO_VOTAM.includes(j)).length} votantes`);
+                    linhas.push("");
+                    linhas.push("=== RANKING FINAL ===");
+                    linhas.push(["Pos","Jogador","Nota Fase 1","Nota Final","Total Votos","Status","Obs"].join(sep));
                     resultadoFinal.forEach((j,i) => {
-                      const status = j.notaFinalValidada > j.nf ? "▲ Subiu" : j.notaFinalValidada < j.nf ? "▼ Desceu" : "✓ Mantida";
-                      linhas.push([i+1, j.nome, j.nf?.toFixed(1)||"—", j.notaFinalValidada?.toFixed(1)||"—", j.totalVotos, j.notaFixa?"Nota definida pelo admin":status].join(","));
+                      const status = j.notaFixa ? "Nota admin" : j.notaFinalValidada > j.nf ? "▲ Subiu 0,5" : j.notaFinalValidada < j.nf ? "▼ Desceu 0,5" : "✓ Mantida";
+                      linhas.push([i+1, j.nome, j.nf?.toFixed(1)||"—", j.notaFinalValidada?.toFixed(1)||"—", j.totalVotos, status, j.notaFixa?"Novo integrante":""].join(sep));
                     });
+
+                    // ── SEÇÃO 2: Detalhamento de votos por jogador
+                    linhas.push("");
+                    linhas.push("=== DETALHAMENTO DOS VOTOS POR JOGADOR ===");
+                    resultadoFinal.forEach(j => {
+                      linhas.push("");
+                      linhas.push(`JOGADOR: ${j.nome}`);
+                      linhas.push(`Nota fase 1: ${j.nf?.toFixed(1)||"—"}  |  Nota final validada: ${j.notaFinalValidada?.toFixed(1)||"—"}  |  Total de votos: ${j.totalVotos}`);
+                      if (j.notaFixa) {
+                        linhas.push("Novo integrante — nota definida pelo administrador");
+                      }
+                      // Cabeçalho das opções
+                      const opcoes = Object.keys(j.votos).map(Number).sort((a,b)=>a-b);
+                      linhas.push(["Opção de voto","Votos recebidos","% dos votos","Quem votou nessa nota"].join(sep));
+                      opcoes.forEach(opcao => {
+                        const qtd = j.votos[opcao] || 0;
+                        const pct = j.totalVotos > 0 ? Math.round((qtd/j.totalVotos)*100) : 0;
+                        // Buscar quem votou nessa opção
+                        const votantes = Object.entries(votosValidacao)
+                          .filter(([,votos]) => votos[j.nome] === opcao)
+                          .map(([votante]) => votante)
+                          .join(" | ");
+                        const isVencedor = opcao === j.notaFinalValidada;
+                        linhas.push([
+                          `${opcao.toFixed(1)}${isVencedor?" ← VENCEDOR":""}`,
+                          qtd,
+                          `${pct}%`,
+                          votantes || "—"
+                        ].join(sep));
+                      });
+                    });
+
+                    // ── SEÇÃO 3: Matriz completa (quem votou em quem)
+                    linhas.push("");
+                    linhas.push("=== MATRIZ COMPLETA DE VOTOS ===");
+                    const votantesLista = Object.keys(votosValidacao).sort();
+                    const jogadoresLista = resultadoFinal.map(j => j.nome);
+                    linhas.push(["Votante", ...jogadoresLista].join(sep));
+                    votantesLista.forEach(votante => {
+                      const row = [votante];
+                      jogadoresLista.forEach(jog => {
+                        const voto = votosValidacao[votante]?.[jog];
+                        row.push(voto !== undefined ? Number(voto).toFixed(1) : "—");
+                      });
+                      linhas.push(row.join(sep));
+                    });
+
+                    // ── SEÇÃO 4: Lista pronta para Teams Generation
+                    linhas.push("");
+                    linhas.push("=== NOTAS PARA O TEAMS GENERATION ===");
+                    linhas.push(["Jogador","Posição","Nota Final 0-10"].join(sep));
+                    resultadoFinal.forEach(j => {
+                      linhas.push([j.nome, "", j.notaFinalValidada?.toFixed(1)||"—"].join(sep));
+                    });
+
                     const csv = "\uFEFF" + linhas.join("\n");
                     const blob = new Blob([csv], { type:"text/csv;charset=utf-8;" });
                     const url = URL.createObjectURL(blob);
