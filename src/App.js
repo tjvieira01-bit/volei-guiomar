@@ -39,7 +39,9 @@ const JOGADORES_BASE = [
 ];
 const JOGADORES = JOGADORES_BASE.map(j => j.nome);
 const TOTAL_VOTANTES = JOGADORES.length;
-const FIREBASE_URL = "https://volei-guiomar-default-rtdb.firebaseio.com";
+// Firebase URL — configure REACT_APP_FIREBASE_URL no .env para produção
+// Verifique as regras de segurança do Firebase: restringir leitura/escrita por domínio
+const FIREBASE_URL = process.env.REACT_APP_FIREBASE_URL || "https://volei-guiomar-default-rtdb.firebaseio.com";
 
 // ── Tabela porte → nota base ──────────────────────────────────────────────────
 // Aceita porte ("Baixo"/"Médio"/"Alto") ou altura em cm para compatibilidade
@@ -153,7 +155,7 @@ async function carregarTudo() {
   const validacao = {};
   if (validData) Object.values(validData).forEach(e => { if(e?.votante) validacao[decodeURIComponent(e.votante)]=e.votos; });
   const fase3 = {};
-  if (fase3Data) Object.entries(fase3Data).forEach(([k,v]) => { fase3[decodeURIComponent(k.replace(/%/g,'%'))]=v; });
+  if (fase3Data) Object.entries(fase3Data).forEach(([k,v]) => { fase3[decodeURIComponent(k)]=v; });
   const config = configData || { fase2Liberada:false, fase3Liberada:false };
   const cadastro = cadastroData || {};
   return { avaliacoes, validacao, fase3, config, cadastro };
@@ -252,7 +254,7 @@ function Header({ titulo, subtitulo, onVoltar, direita }) {
 }
 
 // ── Tela Seleção ──────────────────────────────────────────────────────────────
-function TelaSelecao({ onF1, onF2, jaAvaliaram, fase2Liberada, onAdmin, onSorteio }) {
+function TelaSelecao({ onF1, onF2, jaAvaliaram, fase2Liberada, jaVotouF2, onAdmin, onSorteio }) {
   const [busca, setBusca] = useState("");
   const filtrados = JOGADORES.filter(j => j.toLowerCase().includes(busca.toLowerCase()));
   const pct = Math.round((jaAvaliaram.length/TOTAL_VOTANTES)*100);
@@ -261,9 +263,9 @@ function TelaSelecao({ onF1, onF2, jaAvaliaram, fase2Liberada, onAdmin, onSortei
     <div style={{ minHeight:"100vh", background:`radial-gradient(ellipse at top, ${AZUL_MED} 0%, ${AZUL_ESC} 40%, ${PRETO} 100%)`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"2rem 1rem" }}>
       <div style={{ marginBottom:"1.5rem", textAlign:"center" }}>
         <img src="/VGM.png" alt="Logo" width="110" height="110" style={{ width:110, height:110, borderRadius:20, objectFit:"cover", boxShadow:`0 0 0 3px ${OURO_ESC}, 0 0 25px rgba(255,193,7,0.25)`, marginBottom:14 }} />
-        <h1 style={{ color:OURO, fontFamily:"'Syne',sans-serif", fontSize:22, fontWeight:800, margin:0 }}>Guiomar de Melo</h1>
-        <p style={{ color:OURO_ESC, fontSize:10, fontWeight:700, marginTop:3, letterSpacing:2 }}>UNIÃO · FORÇA · EVOLUÇÃO</p>
-        <p style={{ color:"rgba(255,255,255,0.35)", fontSize:10, marginTop:2 }}>Fundado em 2020 · Sistema de avaliação V2</p>
+        <h1 style={{ color:OURO, fontFamily:"'Syne',sans-serif", fontSize:24, fontWeight:900, margin:0, letterSpacing:1, lineHeight:1.1, textTransform:"uppercase" }}>Guiomar de Melo</h1>
+        <p style={{ color:OURO_ESC, fontSize:10, fontWeight:700, marginTop:4, letterSpacing:3 }}>VOLEIBOL · VGM · PATOS DE MINAS</p>
+        <p style={{ color:"rgba(255,255,255,0.35)", fontSize:10, marginTop:2 }}>UNIÃO · FORÇA · EVOLUÇÃO · DESDE 2020</p>
       </div>
 
       {/* Progresso */}
@@ -301,8 +303,8 @@ function TelaSelecao({ onF1, onF2, jaAvaliaram, fase2Liberada, onAdmin, onSortei
       {/* Fase 2 */}
       {fase2Liberada ? (
         <div style={{ width:"100%", maxWidth:400, marginBottom:8 }}>
-          <button onClick={onF2} style={{ width:"100%", padding:"14px", borderRadius:14, border:"none", background:`linear-gradient(135deg, ${OURO} 0%, ${OURO_ESC} 100%)`, color:AZUL_ESC, fontSize:14, fontWeight:800, cursor:"pointer", boxShadow:`0 4px 20px rgba(255,193,7,0.35)`, letterSpacing:0.5 }}>
-            🗳️ Validar notas — 2ª rodada
+          <button onClick={onF2} style={{ width:"100%", padding:"14px", borderRadius:14, border:"none", background: jaVotouF2?`rgba(34,197,94,0.15)`:`linear-gradient(135deg, ${OURO} 0%, ${OURO_ESC} 100%)`, color: jaVotouF2?"#4ade80":AZUL_ESC, fontSize:14, fontWeight:800, cursor:"pointer", boxShadow: jaVotouF2?"none":`0 4px 20px rgba(255,193,7,0.35)`, letterSpacing:0.5, border: jaVotouF2?"1px solid rgba(34,197,94,0.4)":"none" }}>
+            {jaVotouF2 ? "✅ Você já validou — ver novamente" : "🗳️ Validar notas — 2ª rodada"}
           </button>
         </div>
       ) : (
@@ -418,7 +420,7 @@ function TelaAvaliacao({ avaliador, avaliacoes, setAvaliacoes, cadastro, onEnvia
               </div>
             </div>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8 }}>
-              {[{v:0,label:"Lento",sub:"muito lento, pouca impulsão e reação"},{v:1,label:"Abaixo",sub:"mobilidade limitada, reage tarde"},{v:2,label:"Boa",sub:"movimenta bem, reage na hora certa"},{v:3,label:"Excelente",sub:"explosivo, salto alto, reação rápida"}].map(({v,label,sub})=>(
+              {[{v:0,label:"+0 Lento",sub:"muito lento, pouca impulsão e reação"},{v:1,label:"+1 Abaixo",sub:"mobilidade limitada, reage tarde"},{v:2,label:"+2 Boa",sub:"movimenta bem, reage na hora certa"},{v:3,label:"+3 Excelente",sub:"explosivo, salto alto, reação rápida"}].map(({v,label,sub})=>(
                 <button key={v} onClick={()=>setField(jogAtual,"fisico_mob",v)}
                   style={{ padding:"10px 6px", borderRadius:10, border: av.fisico_mob===v?`2px solid ${OURO}`:`1px solid rgba(255,255,255,0.1)`, background: av.fisico_mob===v?AZUL:CZ_MED, cursor:"pointer", textAlign:"center" }}>
                   <div style={{ fontSize:16, fontWeight:800, color: av.fisico_mob===v?OURO:BRANCO }}>+{v}</div>
@@ -795,7 +797,9 @@ function TelaValidacao({ votante, consolidado, votosValidacao, jaVotou, onEnviar
               <div style={{ width:26, height:26, borderRadius:7, background:votado?AZUL:CZ_MED, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700, color:votado?OURO:"rgba(255,255,255,0.3)", flexShrink:0 }}>{idx+1}</div>
               <div style={{ flex:1, textAlign:"left" }}>
                 <div style={{ fontWeight:600, fontSize:13, color:BRANCO }}>{j.nome}</div>
-                <div style={{ fontSize:11, color:"rgba(255,255,255,0.4)", marginTop:2 }}>nota atual: {j.nf.toFixed(1)} — {nivelLabel(j.nf)}</div>
+                <div style={{ fontSize:11, color:"rgba(255,255,255,0.4)", marginTop:2 }}>
+                  nota: {j.nf.toFixed(1)} — {nivelLabel(j.nf)} · {Object.values(votosValidacao).filter(v=>v[j.nome]!==undefined).length} votos recebidos
+                </div>
               </div>
               {votado?(
                 <div style={{ display:"flex", alignItems:"center", gap:6 }}>
@@ -1007,6 +1011,8 @@ function TelaAdmin({ dados, cadastro, setCadastro, votosValidacao, fase3, setFas
   const [editCad, setEditCad] = useState(null);
   const [salvando, setSalvando] = useState(false);
   const [nTimes, setNTimes] = useState(3);
+  const [adminVagasH, setAdminVagasH] = useState(3);
+  const [adminVagasM, setAdminVagasM] = useState(3);
 
   // Calcular consolidado
   function calcConsolidado(dadosBase) {
@@ -1051,9 +1057,9 @@ function TelaAdmin({ dados, cadastro, setCadastro, votosValidacao, fase3, setFas
   }).sort((a,b)=>(b.notaFinal||0)-(a.notaFinal||0));
 
   // Serpentina — usa função global parametrizada
-  function gerarSerpentinaAdmin(nT) {
+  function gerarSerpentinaAdmin(nT, vH, vM) {
     const rf = resultadoFinal.filter(j=>j.notaFinal!==null);
-    const { times } = gerarSerpentina(rf, nT, Math.ceil(rf.filter(j=>JOGADORES_BASE.find(x=>x.nome===j.nome)?.genero==="M").length/nT), Math.ceil(rf.filter(j=>JOGADORES_BASE.find(x=>x.nome===j.nome)?.genero==="F").length/nT));
+    const { times } = gerarSerpentina(rf, nT, vH, vM);
     return times;
   }
 
@@ -1168,7 +1174,7 @@ function TelaAdmin({ dados, cadastro, setCadastro, votosValidacao, fase3, setFas
     );
   }
 
-  const times = gerarSerpentinaAdmin(nTimes);
+  const times = gerarSerpentinaAdmin(nTimes, adminVagasH, adminVagasM);
 
   return (
     <div style={{ minHeight:"100vh", background:CZ_CL }}>
@@ -1317,7 +1323,7 @@ function TelaAdmin({ dados, cadastro, setCadastro, votosValidacao, fase3, setFas
             <div style={{ background:CZ_CARD, borderRadius:14, border:`1px solid ${OURO_ESC}`, padding:"1rem", marginBottom:12 }}>
               <div style={{ color:OURO, fontWeight:700, fontSize:13, marginBottom:10 }}>⚡ Gerar times por serpentina</div>
               <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
-                <span style={{ color:BRANCO, fontSize:13 }}>Número de times:</span>
+                <span style={{ color:BRANCO, fontSize:13 }}>Nº de times:</span>
                 {[2,3,4,5,6].map(n=>(
                   <button key={n} onClick={()=>setNTimes(n)}
                     style={{ width:36, height:36, borderRadius:8, border:nTimes===n?`2px solid ${OURO}`:`1px solid rgba(255,255,255,0.1)`, background:nTimes===n?AZUL:CZ_MED, color:nTimes===n?OURO:BRANCO, fontSize:13, fontWeight:700, cursor:"pointer" }}>
@@ -1325,8 +1331,32 @@ function TelaAdmin({ dados, cadastro, setCadastro, votosValidacao, fase3, setFas
                   </button>
                 ))}
               </div>
+              <div style={{ display:"flex", gap:12, marginBottom:10 }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ color:"#93c5fd", fontSize:11, marginBottom:4 }}>♂ Homens/time</div>
+                  <div style={{ display:"flex", gap:6 }}>
+                    {[1,2,3,4,5].map(n=>(
+                      <button key={n} onClick={()=>setAdminVagasH(n)}
+                        style={{ width:32, height:32, borderRadius:7, border:adminVagasH===n?`2px solid #93c5fd`:`1px solid rgba(255,255,255,0.1)`, background:adminVagasH===n?"#1e3a5f":CZ_MED, color:adminVagasH===n?"#93c5fd":BRANCO, fontSize:12, fontWeight:700, cursor:"pointer" }}>
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ flex:1 }}>
+                  <div style={{ color:"#f9a8d4", fontSize:11, marginBottom:4 }}>♀ Mulheres/time</div>
+                  <div style={{ display:"flex", gap:6 }}>
+                    {[1,2,3,4,5].map(n=>(
+                      <button key={n} onClick={()=>setAdminVagasM(n)}
+                        style={{ width:32, height:32, borderRadius:7, border:adminVagasM===n?`2px solid #f9a8d4`:`1px solid rgba(255,255,255,0.1)`, background:adminVagasM===n?"#4a1942":CZ_MED, color:adminVagasM===n?"#f9a8d4":BRANCO, fontSize:12, fontWeight:700, cursor:"pointer" }}>
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
               <div style={{ color:"rgba(255,255,255,0.4)", fontSize:11 }}>
-                {resultadoFinal.filter(j=>j.notaFinal!==null).length} jogadores disponíveis ·{" "}
+                {resultadoFinal.filter(j=>j.notaFinal!==null).length} disponíveis ·{" "}
                 {JOGADORES_BASE.filter(j=>j.genero==="M").length} ♂ · {JOGADORES_BASE.filter(j=>j.genero==="F").length} ♀
               </div>
             </div>
@@ -1553,7 +1583,13 @@ export default function App() {
     <TelaSelecao onF1={nome=>{ setAvaliador(nome); setAvaliacoes(todasRespostas[nome]||{}); setJaEnviou(!!todasRespostas[nome]); setTela("avaliacao"); }}
       onF2={()=>setTela("selecao_f2")} jaAvaliaram={jaAvaliaram}
       fase2Liberada={config.fase2Liberada}
+      jaVotouF2={jaVotouF2}
       onSorteio={()=>setTela("sorteio")}
-      onAdmin={()=>{ const s=window.prompt("Senha:"); if(s==="TiagoAdmin") setTela("admin"); else if(s!==null&&s!=="") alert("Senha incorreta!"); }} />
+      onAdmin={()=>{
+        const adminPwd = process.env.REACT_APP_ADMIN_PASSWORD || "TiagoAdmin";
+        const s=window.prompt("Acesso restrito — senha:");
+        if(s===adminPwd) setTela("admin");
+        else if(s!==null&&s!=="") alert("Senha incorreta!");
+      }} />
   );
 }
