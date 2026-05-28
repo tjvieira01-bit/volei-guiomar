@@ -65,12 +65,6 @@ function notaBaseAltura(porteOuAltura, genero) {
   }
 }
 
-function calcFisico(altura, genero, mobilidade) {
-  const base = notaBaseAltura(altura, genero);
-  if (base === null || mobilidade === null || mobilidade === undefined) return null;
-  return Math.min(10, base + Number(mobilidade));
-}
-
 function notaFinalV2(tecnico, fisico, leitura) {
   if (tecnico===null||fisico===null||leitura===null) return null;
   return Math.round(((tecnico*0.6)+(fisico*0.25)+(leitura*0.15))*2)/2;
@@ -78,7 +72,9 @@ function notaFinalV2(tecnico, fisico, leitura) {
 
 function leituraTotal(sub) {
   if (!sub) return null;
-  // Formato novo: posicionamento, leitura, decisao
+  // Formato atual (V2): posicionamento (0-3) + leitura (0-3) + decisao (0-4) = 10
+  // Compatibilidade com formato antigo (V1): rotacao + espacos + decisao + comunicacao
+  // Remova o bloco "Formato antigo" quando confirmar que não há mais dados V1 no Firebase
   if (sub.posicionamento!==undefined || sub.leitura!==undefined) {
     const { posicionamento, leitura, decisao } = sub;
     if ([posicionamento,leitura,decisao].some(v=>v===null||v===undefined)) return null;
@@ -906,10 +902,24 @@ function TelaSorteio({ resultadoFinal, onVoltar }) {
                 </div>
               </div>
 
-              <button onClick={gerarTimes}
-                style={{ width:"100%", padding:"13px", borderRadius:12, border:"none", background:`linear-gradient(135deg,${OURO},${OURO_ESC})`, color:AZUL_ESC, fontSize:14, fontWeight:800, cursor:"pointer", boxShadow:`0 4px 16px rgba(255,193,7,0.3)`, letterSpacing:0.5 }}>
-                🎲 Gerar Times
-              </button>
+              {(() => {
+                const hInsuf = nTimes * vagasH > totalH;
+                const mInsuf = nTimes * vagasM > totalM;
+                const bloqueado = hInsuf || mInsuf;
+                return (
+                  <div>
+                    {bloqueado && (
+                      <div style={{ background:"rgba(251,146,60,0.1)", border:"1px solid rgba(251,146,60,0.3)", borderRadius:10, padding:"8px 12px", marginBottom:8, fontSize:12, color:"#fb923c", textAlign:"center" }}>
+                        ⚠️ {hInsuf ? `Faltam ♂: precisa ${nTimes*vagasH}, tem ${totalH}` : ""}{hInsuf&&mInsuf?" · ":""}{mInsuf ? `Faltam ♀: precisa ${nTimes*vagasM}, tem ${totalM}` : ""}
+                      </div>
+                    )}
+                    <button onClick={bloqueado ? undefined : gerarTimes} disabled={bloqueado}
+                      style={{ width:"100%", padding:"13px", borderRadius:12, border:"none", background:bloqueado?"rgba(255,255,255,0.08)":`linear-gradient(135deg,${OURO},${OURO_ESC})`, color:bloqueado?"rgba(255,255,255,0.3)":AZUL_ESC, fontSize:14, fontWeight:800, cursor:bloqueado?"not-allowed":"pointer", boxShadow:bloqueado?"none":`0 4px 16px rgba(255,193,7,0.3)`, letterSpacing:0.5 }}>
+                      {bloqueado ? "⛔ Jogadores insuficientes" : "🎲 Gerar Times"}
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Resultado */}
@@ -1415,12 +1425,12 @@ function TelaAdmin({ dados, cadastro, setCadastro, votosValidacao, fase3, setFas
 
         {tab==="cadastro"&&(
           <div>
-            <p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", marginBottom:10, textAlign:"center" }}>Clique em um jogador no Ranking para editar a altura individualmente</p>
+            <p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", marginBottom:10, textAlign:"center" }}>Clique em um jogador no Ranking para editar o porte individualmente</p>
             <div style={{ background:CZ_CARD, borderRadius:14, border:`1px solid rgba(255,255,255,0.08)`, overflow:"hidden" }}>
               <div style={{ background:AZUL_ESC, padding:"10px 16px", display:"flex", gap:6, borderBottom:`1px solid ${OURO_ESC}` }}>
                 <span style={{ color:OURO, fontSize:10, fontWeight:700, flex:2 }}>JOGADOR</span>
                 <span style={{ color:"rgba(255,255,255,0.4)", fontSize:10, flex:1, textAlign:"center" }}>GÊN</span>
-                <span style={{ color:"rgba(255,255,255,0.4)", fontSize:10, flex:1, textAlign:"center" }}>ALTURA</span>
+                <span style={{ color:"rgba(255,255,255,0.4)", fontSize:10, flex:1, textAlign:"center" }}>PORTE</span>
                 <span style={{ color:"rgba(255,255,255,0.4)", fontSize:10, flex:1, textAlign:"center" }}>BASE</span>
               </div>
               {JOGADORES.map((j,i)=>{
@@ -1431,7 +1441,7 @@ function TelaAdmin({ dados, cadastro, setCadastro, votosValidacao, fase3, setFas
                   <div key={j} onClick={()=>setJogSel(j)} style={{ display:"flex", alignItems:"center", gap:6, padding:"9px 16px", borderBottom:i<JOGADORES.length-1?"1px solid rgba(255,255,255,0.04)":"none", cursor:"pointer" }}>
                     <span style={{ flex:2, fontSize:12, fontWeight:600, color:BRANCO }}>{j}</span>
                     <span style={{ flex:1, textAlign:"center", fontSize:12, color:gen==="F"?"#f9a8d4":"#93c5fd" }}>{gen==="F"?"♀":"♂"}</span>
-                    <span style={{ flex:1, textAlign:"center", fontSize:12, color:cad.altura?OURO_CL:"rgba(255,255,255,0.2)" }}>{cad.altura?`${cad.altura}cm`:"—"}</span>
+                    <span style={{ flex:1, textAlign:"center", fontSize:12, color:(cad.porte||cad.altura)?OURO_CL:"rgba(255,255,255,0.2)" }}>{cad.porte || (cad.altura?`${cad.altura}cm`:"—")}</span>
                     <span style={{ flex:1, textAlign:"center", fontSize:12, color:nb!==null?OURO:"rgba(255,255,255,0.2)" }}>{nb!==null?nb:"—"}</span>
                   </div>
                 );
