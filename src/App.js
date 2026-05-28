@@ -41,25 +41,24 @@ const JOGADORES = JOGADORES_BASE.map(j => j.nome);
 const TOTAL_VOTANTES = JOGADORES.length;
 const FIREBASE_URL = "https://volei-guiomar-default-rtdb.firebaseio.com";
 
-// ── Tabela altura → nota base ─────────────────────────────────────────────────
-function notaBaseAltura(altura, genero) {
-  if (!altura) return null;
-  const h = Number(altura);
+// ── Tabela porte → nota base ──────────────────────────────────────────────────
+// Aceita porte ("Baixo"/"Médio"/"Alto") ou altura em cm para compatibilidade
+function notaBaseAltura(porteOuAltura, genero) {
+  if (!porteOuAltura) return null;
+  // Se for porte textual
+  if (porteOuAltura === "Baixo") return 1;
+  if (porteOuAltura === "Médio") return 4;
+  if (porteOuAltura === "Alto")  return 7;
+  // Fallback: altura em cm (compatibilidade)
+  const h = Number(porteOuAltura);
+  if (isNaN(h)) return null;
   if (genero === "M") {
-    if (h < 165) return 1;
-    if (h <= 172) return 2;
-    if (h <= 179) return 3;
-    if (h <= 186) return 4;
-    if (h <= 193) return 5;
-    if (h <= 200) return 6;
+    if (h < 170) return 1;
+    if (h <= 180) return 4;
     return 7;
   } else {
-    if (h < 155) return 1;
-    if (h <= 162) return 2;
-    if (h <= 169) return 3;
-    if (h <= 176) return 4;
-    if (h <= 183) return 5;
-    if (h <= 190) return 6;
+    if (h < 160) return 1;
+    if (h <= 170) return 4;
     return 7;
   }
 }
@@ -267,7 +266,7 @@ function TelaAvaliacao({ avaliador, avaliacoes, setAvaliacoes, cadastro, onEnvia
     const av = getAv(jogAtual);
     const cad = cadastro[jogAtual]||{};
     const genero = JOGADORES_BASE.find(j=>j.nome===jogAtual)?.genero||"M";
-    const notaBase = notaBaseAltura(cad.altura, genero);
+    const notaBase = notaBaseAltura(cad.porte || cad.altura, genero);
     const mob = av.fisico_mob!==undefined?Number(av.fisico_mob):null;
     const fisico = notaBase!==null&&mob!==null?Math.min(10,notaBase+mob):null;
     const lt = leituraTotal(av.leitura_sub);
@@ -291,8 +290,8 @@ function TelaAvaliacao({ avaliador, avaliacoes, setAvaliacoes, cadastro, onEnvia
           <div style={{ background:CZ_CARD, borderRadius:16, padding:"1rem 1.25rem", border:`1px solid rgba(212,175,55,${av.tecnico!==undefined?0.4:0.15})` }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
               <div>
-                <div style={{ color:OURO, fontWeight:700, fontSize:14 }}>⚡ Técnico <span style={{ color:"rgba(255,255,255,0.35)", fontWeight:400, fontSize:12 }}>(60%)</span></div>
-                <div style={{ color:"rgba(255,255,255,0.45)", fontSize:11, marginTop:3 }}>Fundamentos gerais observados em jogo</div>
+                <div style={{ color:OURO, fontWeight:700, fontSize:15 }}>⚡ Técnico <span style={{ color:"rgba(255,255,255,0.35)", fontWeight:400, fontSize:12 }}>(60%)</span></div>
+                <div style={{ color:"rgba(255,255,255,0.55)", fontSize:12, marginTop:3 }}>Fundamentos gerais observados em jogo</div>
                 <div style={{ color:"rgba(255,255,255,0.3)", fontSize:10, marginTop:2 }}>Saque · Passe · Levantamento · Ataque · Bloqueio · Defesa</div>
               </div>
               <div style={{ background:av.tecnico!==undefined?notaColor(av.tecnico):CZ_MED, borderRadius:10, minWidth:46, height:46, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, fontWeight:800, color:av.tecnico!==undefined?notaColorText(av.tecnico):"#4a5568", border:`2px solid ${av.tecnico!==undefined?OURO_ESC:"rgba(255,255,255,0.1)"}` }}>
@@ -302,7 +301,7 @@ function TelaAvaliacao({ avaliador, avaliacoes, setAvaliacoes, cadastro, onEnvia
             <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
               {[0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,7,7.5,8,8.5,9,9.5,10].map(n=>(
                 <button key={n} onClick={()=>setField(jogAtual,"tecnico",n)}
-                  style={{ width:38, height:32, borderRadius:7, border: av.tecnico===n?`2px solid ${OURO}`:`1px solid rgba(255,255,255,0.1)`, background: av.tecnico===n?AZUL:notaColor(n), color: av.tecnico===n?OURO:notaColorText(n), fontSize:11, fontWeight:av.tecnico===n?700:500, cursor:"pointer" }}>
+                  style={{ width:38, height:32, borderRadius:7, border: av.tecnico===n?`2px solid ${OURO}`:`1px solid rgba(255,255,255,0.1)`, background: av.tecnico===n?AZUL:notaColor(n), color: av.tecnico===n?OURO:notaColorText(n), fontSize:12, fontWeight:av.tecnico===n?700:500, cursor:"pointer" }}>
                   {n%1===0?n:n.toFixed(1)}
                 </button>
               ))}
@@ -313,12 +312,18 @@ function TelaAvaliacao({ avaliador, avaliacoes, setAvaliacoes, cadastro, onEnvia
           <div style={{ background:CZ_CARD, borderRadius:16, padding:"1rem 1.25rem", border:`1px solid rgba(212,175,55,${av.fisico_mob!==undefined?0.4:0.15})` }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
               <div>
-                <div style={{ color:OURO, fontWeight:700, fontSize:14 }}>🏃 Físico <span style={{ color:"rgba(255,255,255,0.35)", fontWeight:400, fontSize:12 }}>(25%)</span></div>
+                <div style={{ color:OURO, fontWeight:700, fontSize:15 }}>🏃 Físico <span style={{ color:"rgba(255,255,255,0.35)", fontWeight:400, fontSize:12 }}>(25%)</span></div>
                 <div style={{ color:"rgba(255,255,255,0.45)", fontSize:11, marginTop:3 }}>
-                  {notaBase!==null?`Nota base: ${notaBase} (porte ${cad.porte||"?"})`:"Porte não cadastrado"}
+                  {notaBase!==null?`Nota base: ${notaBase} (porte ${cad.porte||cad.altura||"não cadastrado"})`:"Porte não cadastrado"}
                 </div>
-                <div style={{ color:"rgba(255,255,255,0.3)", fontSize:10, marginTop:2 }}>
-                  Ref.: ♂ Baixo&lt;1,70 · Médio 1,70–1,80 · Alto&gt;1,80 | ♀ Baixo&lt;1,60 · Médio 1,60–1,70 · Alto&gt;1,70
+                <div style={{ color:"rgba(255,255,255,0.35)", fontSize:11, marginTop:4, lineHeight:1.5 }}>
+                  ♂ Baixo &lt;1,70m · Médio 1,70–1,80m · Alto &gt;1,80m
+                </div>
+                <div style={{ color:"rgba(255,255,255,0.35)", fontSize:11, lineHeight:1.5 }}>
+                  ♀ Baixo &lt;1,60m · Médio 1,60–1,70m · Alto &gt;1,70m
+                </div>
+                <div style={{ color:"rgba(255,193,7,0.5)", fontSize:10, marginTop:3, fontStyle:"italic" }}>
+                  Alto parado pode valer menos que Baixo explosivo — a mobilidade define!
                 </div>
               </div>
               <div style={{ background:fisico!==null?notaColor(fisico):CZ_MED, borderRadius:10, minWidth:46, height:46, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, fontWeight:800, color:fisico!==null?notaColorText(fisico):"#4a5568", border:`2px solid ${fisico!==null?OURO_ESC:"rgba(255,255,255,0.1)"}` }}>
@@ -326,7 +331,7 @@ function TelaAvaliacao({ avaliador, avaliacoes, setAvaliacoes, cadastro, onEnvia
               </div>
             </div>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8 }}>
-              {[{v:0,label:"Lento",sub:"pouca impulsão"},{v:1,label:"Abaixo",sub:"mobilidade limitada"},{v:2,label:"Boa",sub:"movimentação ativa"},{v:3,label:"Excelente",sub:"explosivo, bom salto"}].map(({v,label,sub})=>(
+              {[{v:0,label:"Lento",sub:"muito lento, pouca impulsão e reação"},{v:1,label:"Abaixo",sub:"mobilidade limitada, reage tarde"},{v:2,label:"Boa",sub:"movimenta bem, reage na hora certa"},{v:3,label:"Excelente",sub:"explosivo, salto alto, reação rápida"}].map(({v,label,sub})=>(
                 <button key={v} onClick={()=>setField(jogAtual,"fisico_mob",v)}
                   style={{ padding:"10px 6px", borderRadius:10, border: av.fisico_mob===v?`2px solid ${OURO}`:`1px solid rgba(255,255,255,0.1)`, background: av.fisico_mob===v?AZUL:CZ_MED, cursor:"pointer", textAlign:"center" }}>
                   <div style={{ fontSize:16, fontWeight:800, color: av.fisico_mob===v?OURO:BRANCO }}>+{v}</div>
@@ -344,7 +349,7 @@ function TelaAvaliacao({ avaliador, avaliacoes, setAvaliacoes, cadastro, onEnvia
           <div style={{ background:CZ_CARD, borderRadius:16, padding:"1rem 1.25rem", border:`1px solid rgba(212,175,55,${lt!==null?0.4:0.15})` }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
               <div>
-                <div style={{ color:OURO, fontWeight:700, fontSize:14 }}>🧠 Leitura de Jogo <span style={{ color:"rgba(255,255,255,0.35)", fontWeight:400, fontSize:12 }}>(15%)</span></div>
+                <div style={{ color:OURO, fontWeight:700, fontSize:15 }}>🧠 Leitura de Jogo <span style={{ color:"rgba(255,255,255,0.35)", fontWeight:400, fontSize:12 }}>(15%)</span></div>
                 <div style={{ color:"rgba(255,255,255,0.45)", fontSize:11, marginTop:3 }}>Some os pontos de cada subcritério</div>
               </div>
               <div style={{ background:lt!==null?notaColor(lt):CZ_MED, borderRadius:10, minWidth:46, height:46, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, fontWeight:800, color:lt!==null?notaColorText(lt):"#4a5568", border:`2px solid ${lt!==null?OURO_ESC:"rgba(255,255,255,0.1)"}` }}>
@@ -352,9 +357,9 @@ function TelaAvaliacao({ avaliador, avaliacoes, setAvaliacoes, cadastro, onEnvia
               </div>
             </div>
             {[
-              { key:"posicionamento", label:"Posicionamento",      max:3, desc:"Lugar certo na defesa e no bloqueio" },
-              { key:"leitura",        label:"Leitura de quadra",   max:3, desc:"Antecipa jogadas, cobre espaços, ajuda o companheiro" },
-              { key:"decisao",        label:"Tomada de decisão",   max:4, desc:"Levanta no momento certo, sabe largar, quando atacar" },
+              { key:"posicionamento", label:"Posicionamento",    max:3, desc:"Está no lugar certo — defesa, bloqueio e cobertura de ataque" },
+              { key:"leitura",        label:"Leitura de quadra", max:3, desc:"Antecipa jogadas, cobre espaços, ajuda o companheiro sem bola" },
+              { key:"decisao",        label:"Tomada de decisão", max:4, desc:"Finta o bloqueio, encontra os buracos, explora o bloqueio adversário, decide rápido" },
             ].map(({ key, label, max, desc }) => {
               const val = sub[key];
               const opts = Array.from({length:max+1},(_,i)=>i);
@@ -362,8 +367,8 @@ function TelaAvaliacao({ avaliador, avaliacoes, setAvaliacoes, cadastro, onEnvia
                 <div key={key} style={{ marginBottom:10 }}>
                   <div style={{ display:"flex", justifyContent:"space-between", marginBottom:5 }}>
                     <div>
-                      <div style={{ color:BRANCO, fontSize:12, fontWeight:600 }}>{label} <span style={{ color:"rgba(255,255,255,0.35)", fontSize:11 }}>(0–{max})</span></div>
-                      <div style={{ color:"rgba(255,255,255,0.35)", fontSize:10 }}>{desc}</div>
+                      <div style={{ color:BRANCO, fontSize:13, fontWeight:600 }}>{label} <span style={{ color:"rgba(255,255,255,0.35)", fontSize:11 }}>(0–{max})</span></div>
+                      <div style={{ color:"rgba(255,255,255,0.4)", fontSize:11 }}>{desc}</div>
                     </div>
                     <span style={{ color:val!==undefined?OURO:"rgba(255,255,255,0.25)", fontWeight:800, fontSize:16, minWidth:24, textAlign:"center" }}>{val!==undefined?val:"—"}</span>
                   </div>
@@ -441,7 +446,7 @@ function TelaAvaliacao({ avaliador, avaliacoes, setAvaliacoes, cadastro, onEnvia
               const av=getAv(j);
               const cad=cadastro[j]||{};
               const gen=JOGADORES_BASE.find(x=>x.nome===j)?.genero||"M";
-              const nb=notaBaseAltura(cad.altura,gen);
+              const nb=notaBaseAltura(cad.porte||cad.altura,gen);
               const mob=av.fisico_mob!==undefined?Number(av.fisico_mob):null;
               const fis=nb!==null&&mob!==null?Math.min(10,nb+mob):null;
               const lt=leituraTotal(av.leitura_sub);
@@ -489,7 +494,7 @@ function TelaAvaliacao({ avaliador, avaliacoes, setAvaliacoes, cadastro, onEnvia
           const ok=isCompleto(j);
           const cad=cadastro[j]||{};
           const gen=JOGADORES_BASE.find(x=>x.nome===j)?.genero||"M";
-          const nb=notaBaseAltura(cad.altura,gen);
+          const nb=notaBaseAltura(cad.porte||cad.altura,gen);
           const mob=av.fisico_mob!==undefined?Number(av.fisico_mob):null;
           const fis=nb!==null&&mob!==null?Math.min(10,nb+mob):null;
           const lt=leituraTotal(av.leitura_sub);
@@ -1116,7 +1121,7 @@ function TelaAdmin({ dados, cadastro, setCadastro, votosValidacao, fase3, setFas
               {JOGADORES.map((j,i)=>{
                 const cad=cadastro[j]||{};
                 const gen=JOGADORES_BASE.find(x=>x.nome===j)?.genero||"M";
-                const nb=notaBaseAltura(cad.altura,gen);
+                const nb=notaBaseAltura(cad.porte||cad.altura,gen);
                 return (
                   <div key={j} onClick={()=>setJogSel(j)} style={{ display:"flex", alignItems:"center", gap:6, padding:"9px 16px", borderBottom:i<JOGADORES.length-1?"1px solid rgba(255,255,255,0.04)":"none", cursor:"pointer" }}>
                     <span style={{ flex:2, fontSize:12, fontWeight:600, color:BRANCO }}>{j}</span>
