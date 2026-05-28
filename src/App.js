@@ -159,6 +159,80 @@ async function carregarTudo() {
   return { avaliacoes, validacao, fase3, config, cadastro };
 }
 
+// ── Serpentina global (compartilhada entre admin e tela de sorteio) ─────────────
+function gerarSerpentina(listaFinal, nTimes, vagasH, vagasM) {
+  const homens   = listaFinal.filter(j => JOGADORES_BASE.find(x=>x.nome===j.nome)?.genero==="M")
+                              .sort((a,b)=>(b.notaFinal||0)-(a.notaFinal||0));
+  const mulheres = listaFinal.filter(j => JOGADORES_BASE.find(x=>x.nome===j.nome)?.genero==="F")
+                              .sort((a,b)=>(b.notaFinal||0)-(a.notaFinal||0));
+
+  const times = Array.from({length:nTimes}, () => ({ homens:[], mulheres:[], soma:0 }));
+
+  // Serpentina homens
+  const hAtivos = homens.slice(0, vagasH * nTimes);
+  const hReservas = homens.slice(vagasH * nTimes);
+  let dir=1, t=0;
+  hAtivos.forEach(j => {
+    times[t].homens.push(j); times[t].soma += j.notaFinal||0;
+    t += dir;
+    if (t >= nTimes) { t = nTimes-1; dir = -1; }
+    else if (t < 0)  { t = 0; dir = 1; }
+  });
+
+  // Serpentina mulheres
+  const mAtivas = mulheres.slice(0, vagasM * nTimes);
+  const mReservas = mulheres.slice(vagasM * nTimes);
+  dir=1; t=0;
+  mAtivas.forEach(j => {
+    times[t].mulheres.push(j); times[t].soma += j.notaFinal||0;
+    t += dir;
+    if (t >= nTimes) { t = nTimes-1; dir = -1; }
+    else if (t < 0)  { t = 0; dir = 1; }
+  });
+
+  const reservas = [...hReservas, ...mReservas];
+  return { times, reservas };
+}
+
+// ── Calcular resultado final (helper compartilhado) ───────────────────────────
+function calcResultadoFinal(dados, cadastro, votosValidacao, fase3) {
+  const consolidado = JOGADORES.map(jog => {
+    const avs = Object.entries(dados).filter(([av]) => av !== jog);
+    const tecArr = avs.map(([,av])=>av[jog]?.tecnico).filter(v=>v!=null).map(Number);
+    const mobArr = avs.map(([,av])=>av[jog]?.fisico_mob).filter(v=>v!=null).map(Number);
+    const ltArr  = avs.map(([,av])=>leituraTotal(av[jog]?.leitura_sub)).filter(v=>v!=null);
+    const media = arr => {
+      if (!arr.length) return null;
+      const s = arr.length>=3 ? [...arr].sort((a,b)=>a-b).slice(1,-1) : arr;
+      return s.reduce((a,b)=>a+b,0)/s.length;
+    };
+    const gen = JOGADORES_BASE.find(j=>j.nome===jog)?.genero||"M";
+    const nb  = notaBaseAltura(cadastro[jog]?.porte||cadastro[jog]?.altura, gen);
+    const mobM = media(mobArr);
+    const fis  = nb!==null && mobM!==null ? Math.min(10, nb+mobM) : null;
+    const nf   = notaFinalV2(media(tecArr), fis, media(ltArr));
+    return { nome:jog, nf, qtd:tecArr.length };
+  });
+
+  return consolidado.map(j => {
+    if (!j.nf) return { ...j, notaFinal: null };
+    if (fase3[j.nome]?.notaAjustada !== undefined)
+      return { ...j, notaFinal: fase3[j.nome].notaAjustada, ajustadaF3: true };
+    const opcoes = [Math.round((j.nf-0.5)*2)/2, j.nf, Math.round((j.nf+0.5)*2)/2];
+    const contagem = { [opcoes[0]]:0, [j.nf]:0, [opcoes[2]]:0 };
+    Object.values(votosValidacao).forEach(v => {
+      const voto = v[j.nome];
+      if (voto!==undefined && contagem[voto]!==undefined) contagem[voto]++;
+    });
+    let maxV=-1, nfV=j.nf;
+    Object.entries(contagem).forEach(([nota,qtd]) => {
+      if (qtd>maxV || (qtd===maxV && Number(nota)===j.nf)) { maxV=qtd; nfV=Number(nota); }
+    });
+    return { ...j, notaFinal: nfV };
+  }).filter(j=>j.notaFinal!==null)
+    .sort((a,b)=>(b.notaFinal||0)-(a.notaFinal||0));
+}
+
 // ── Header VGM ────────────────────────────────────────────────────────────────
 function Header({ titulo, subtitulo, onVoltar, direita }) {
   return (
@@ -178,7 +252,7 @@ function Header({ titulo, subtitulo, onVoltar, direita }) {
 }
 
 // ── Tela Seleção ──────────────────────────────────────────────────────────────
-function TelaSelecao({ onF1, onF2, jaAvaliaram, jaVotaramF2, fase2Liberada, onAdmin }) {
+function TelaSelecao({ onF1, onF2, jaAvaliaram, fase2Liberada, onAdmin, onSorteio }) {
   const [busca, setBusca] = useState("");
   const filtrados = JOGADORES.filter(j => j.toLowerCase().includes(busca.toLowerCase()));
   const pct = Math.round((jaAvaliaram.length/TOTAL_VOTANTES)*100);
@@ -239,7 +313,12 @@ function TelaSelecao({ onF1, onF2, jaAvaliaram, jaVotaramF2, fase2Liberada, onAd
         </div>
       )}
 
-      <button onClick={onAdmin} style={{ marginTop:10, background:"none", border:`1px solid rgba(212,175,55,0.15)`, color:"rgba(255,255,255,0.25)", fontSize:10, borderRadius:8, padding:"5px 14px", cursor:"pointer", letterSpacing:1 }}>
+      <button onClick={onSorteio}
+        style={{ marginTop:8, width:"100%", maxWidth:400, padding:"12px", borderRadius:14, border:`1px solid rgba(255,193,7,0.3)`, background:"rgba(255,193,7,0.07)", color:OURO_CL, fontSize:13, fontWeight:700, cursor:"pointer" }}>
+        🎲 Montar Times
+      </button>
+
+      <button onClick={onAdmin} style={{ marginTop:8, background:"none", border:`1px solid rgba(212,175,55,0.15)`, color:"rgba(255,255,255,0.25)", fontSize:10, borderRadius:8, padding:"5px 14px", cursor:"pointer", letterSpacing:1 }}>
         ⚙ painel administrador
       </button>
     </div>
@@ -733,6 +812,194 @@ function TelaValidacao({ votante, consolidado, votosValidacao, jaVotou, onEnviar
   );
 }
 
+
+// ── Tela Sorteio Público ──────────────────────────────────────────────────────
+function TelaSorteio({ resultadoFinal, onVoltar }) {
+  const [nTimes, setNTimes] = useState(3);
+  const [vagasH, setVagasH] = useState(3);
+  const [vagasM, setVagasM] = useState(3);
+  const [resultado, setResultado] = useState(null);
+
+  const totalH = resultadoFinal.filter(j=>JOGADORES_BASE.find(x=>x.nome===j.nome)?.genero==="M").length;
+  const totalM = resultadoFinal.filter(j=>JOGADORES_BASE.find(x=>x.nome===j.nome)?.genero==="F").length;
+  const semNotas = resultadoFinal.length === 0;
+
+  function gerarTimes() {
+    const { times, reservas } = gerarSerpentina(resultadoFinal, nTimes, vagasH, vagasM);
+    setResultado({ times, reservas });
+  }
+
+  const composicoes = [
+    {h:1,m:5},{h:2,m:4},{h:3,m:3},{h:4,m:2},{h:5,m:1},
+    {h:2,m:2},{h:3,m:2},{h:2,m:3},{h:4,m:3},{h:3,m:4},
+    {h:4,m:4},{h:5,m:5},{h:4,m:5},{h:5,m:4},
+  ].filter(c=>(c.h+c.m)<=12);
+
+  return (
+    <div style={{ minHeight:"100vh", background:`radial-gradient(ellipse at top, ${AZUL_MED} 0%, ${AZUL_ESC} 40%, ${PRETO} 100%)` }}>
+      <Header titulo="Montar Times" subtitulo="Sorteio por serpentina" onVoltar={onVoltar} />
+
+      <div style={{ padding:"1rem", maxWidth:500, margin:"0 auto" }}>
+        {semNotas ? (
+          <div style={{ background:CZ_CARD, borderRadius:16, padding:"2rem", textAlign:"center", border:`1px solid rgba(255,255,255,0.1)`, marginTop:20 }}>
+            <div style={{ fontSize:40, marginBottom:12 }}>⏳</div>
+            <div style={{ color:OURO, fontWeight:700, fontSize:15, marginBottom:8 }}>Ainda não há notas consolidadas</div>
+            <div style={{ color:"rgba(255,255,255,0.5)", fontSize:13 }}>Aguarde o administrador liberar o resultado para montar os times.</div>
+          </div>
+        ) : (
+          <>
+            {/* Config times */}
+            <div style={{ background:CZ_CARD, borderRadius:14, border:`1px solid ${OURO_ESC}`, padding:"1rem", marginBottom:12 }}>
+              <div style={{ color:OURO, fontWeight:700, fontSize:13, marginBottom:10 }}>⚙️ Configuração</div>
+
+              {/* Nº de times */}
+              <div style={{ marginBottom:12 }}>
+                <div style={{ color:"rgba(255,255,255,0.7)", fontSize:12, marginBottom:6 }}>Número de times:</div>
+                <div style={{ display:"flex", gap:8 }}>
+                  {[2,3,4,5,6].map(n=>(
+                    <button key={n} onClick={()=>setNTimes(n)}
+                      style={{ width:38, height:38, borderRadius:8, border:nTimes===n?`2px solid ${OURO}`:`1px solid rgba(255,255,255,0.15)`, background:nTimes===n?AZUL:CZ_MED, color:nTimes===n?OURO:BRANCO, fontSize:14, fontWeight:700, cursor:"pointer" }}>
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Composição */}
+              <div style={{ marginBottom:10 }}>
+                <div style={{ color:"rgba(255,255,255,0.7)", fontSize:12, marginBottom:6 }}>
+                  Composição por time:
+                  <span style={{ color:"rgba(255,255,255,0.4)", fontSize:11, marginLeft:8 }}>♂ {totalH} disponíveis · ♀ {totalM} disponíveis</span>
+                </div>
+                <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                  <div style={{ flex:1 }}>
+                    <div style={{ color:"#93c5fd", fontSize:11, marginBottom:4 }}>♂ Homens por time</div>
+                    <div style={{ display:"flex", gap:6 }}>
+                      {[1,2,3,4,5,6].map(n=>(
+                        <button key={n} onClick={()=>setVagasH(n)}
+                          style={{ width:32, height:32, borderRadius:7, border:vagasH===n?`2px solid #93c5fd`:`1px solid rgba(255,255,255,0.1)`, background:vagasH===n?"#1e3a5f":CZ_MED, color:vagasH===n?"#93c5fd":BRANCO, fontSize:13, fontWeight:700, cursor:"pointer" }}>
+                          {n}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{ flex:1 }}>
+                    <div style={{ color:"#f9a8d4", fontSize:11, marginBottom:4 }}>♀ Mulheres por time</div>
+                    <div style={{ display:"flex", gap:6 }}>
+                      {[1,2,3,4,5,6].map(n=>(
+                        <button key={n} onClick={()=>setVagasM(n)}
+                          style={{ width:32, height:32, borderRadius:7, border:vagasM===n?`2px solid #f9a8d4`:`1px solid rgba(255,255,255,0.1)`, background:vagasM===n?"#4a1942":CZ_MED, color:vagasM===n?"#f9a8d4":BRANCO, fontSize:13, fontWeight:700, cursor:"pointer" }}>
+                          {n}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ color:"rgba(255,255,255,0.4)", fontSize:11, marginTop:8 }}>
+                  {nTimes} times × ({vagasH}♂ + {vagasM}♀) = {nTimes*(vagasH+vagasM)} jogadores em quadra
+                  {nTimes*vagasH > totalH && <span style={{ color:"#fb923c", marginLeft:8 }}>⚠️ Homens insuficientes</span>}
+                  {nTimes*vagasM > totalM && <span style={{ color:"#fb923c", marginLeft:8 }}>⚠️ Mulheres insuficientes</span>}
+                </div>
+              </div>
+
+              <button onClick={gerarTimes}
+                style={{ width:"100%", padding:"13px", borderRadius:12, border:"none", background:`linear-gradient(135deg,${OURO},${OURO_ESC})`, color:AZUL_ESC, fontSize:14, fontWeight:800, cursor:"pointer", boxShadow:`0 4px 16px rgba(255,193,7,0.3)`, letterSpacing:0.5 }}>
+                🎲 Gerar Times
+              </button>
+            </div>
+
+            {/* Resultado */}
+            {resultado && (
+              <>
+                {resultado.times.map((time, i) => {
+                  const todos = [...time.homens,...time.mulheres].sort((a,b)=>(b.notaFinal||0)-(a.notaFinal||0));
+                  const media = todos.length ? time.soma/todos.length : 0;
+                  return (
+                    <div key={i} style={{ background:CZ_CARD, borderRadius:14, border:`1px solid ${OURO_ESC}`, overflow:"hidden", marginBottom:10 }}>
+                      <div style={{ background:`linear-gradient(135deg,${AZUL_ESC},${AZUL_MED})`, padding:"10px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", borderBottom:`1px solid ${OURO_ESC}` }}>
+                        <span style={{ color:OURO, fontWeight:800, fontSize:15 }}>TIME {String.fromCharCode(65+i)}</span>
+                        <div style={{ textAlign:"right" }}>
+                          <div style={{ color:BRANCO, fontSize:12, fontWeight:700 }}>Média: {media.toFixed(2)}</div>
+                          <div style={{ color:"rgba(255,255,255,0.4)", fontSize:10 }}>{todos.length} jogadores · Soma: {time.soma.toFixed(1)}</div>
+                        </div>
+                      </div>
+                      <div style={{ padding:"6px 0" }}>
+                        {todos.map((j,k)=>{
+                          const gen=JOGADORES_BASE.find(x=>x.nome===j.nome)?.genero;
+                          return (
+                            <div key={j.nome} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 16px", borderBottom:k<todos.length-1?"1px solid rgba(255,255,255,0.04)":"none" }}>
+                              <span style={{ fontSize:13, color:gen==="F"?"#f9a8d4":"#93c5fd" }}>{gen==="F"?"♀":"♂"}</span>
+                              <span style={{ flex:1, fontSize:13, fontWeight:500, color:BRANCO }}>{j.nome}</span>
+                              <span style={{ background:notaColor(j.notaFinal), color:notaColorText(j.notaFinal), borderRadius:8, padding:"3px 10px", fontSize:13, fontWeight:700 }}>{j.notaFinal?.toFixed(1)}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Reservas */}
+                {resultado.reservas.length > 0 && (
+                  <div style={{ background:CZ_CARD, borderRadius:14, border:`1px solid rgba(255,255,255,0.1)`, overflow:"hidden", marginBottom:10 }}>
+                    <div style={{ background:"rgba(255,255,255,0.06)", padding:"10px 16px", borderBottom:"1px solid rgba(255,255,255,0.08)" }}>
+                      <span style={{ color:"rgba(255,255,255,0.6)", fontWeight:700, fontSize:13 }}>🔄 Reservas ({resultado.reservas.length})</span>
+                    </div>
+                    <div style={{ padding:"6px 0" }}>
+                      {resultado.reservas.sort((a,b)=>(b.notaFinal||0)-(a.notaFinal||0)).map((j,k)=>{
+                        const gen=JOGADORES_BASE.find(x=>x.nome===j.nome)?.genero;
+                        return (
+                          <div key={j.nome} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 16px", borderBottom:k<resultado.reservas.length-1?"1px solid rgba(255,255,255,0.04)":"none" }}>
+                            <span style={{ fontSize:13, color:gen==="F"?"#f9a8d4":"#93c5fd" }}>{gen==="F"?"♀":"♂"}</span>
+                            <span style={{ flex:1, fontSize:13, color:"rgba(255,255,255,0.6)" }}>{j.nome}</span>
+                            <span style={{ background:notaColor(j.notaFinal), color:notaColorText(j.notaFinal), borderRadius:8, padding:"3px 10px", fontSize:12, fontWeight:700, opacity:0.7 }}>{j.notaFinal?.toFixed(1)}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Verificação equilíbrio */}
+                <div style={{ background:CZ_CARD, borderRadius:14, border:`1px solid rgba(255,255,255,0.1)`, padding:"1rem", marginBottom:20 }}>
+                  <div style={{ color:OURO, fontWeight:700, fontSize:12, marginBottom:8 }}>📊 Verificação de equilíbrio</div>
+                  {(() => {
+                    const medias = resultado.times.map(t => {
+                      const todos = [...t.homens,...t.mulheres];
+                      return todos.length ? t.soma/todos.length : 0;
+                    });
+                    const maxDif = Math.max(...medias) - Math.min(...medias);
+                    const ok = maxDif <= 1.0;
+                    return (
+                      <div>
+                        {resultado.times.map((t,i)=>{
+                          const todos=[...t.homens,...t.mulheres];
+                          const m = todos.length ? t.soma/todos.length : 0;
+                          return (
+                            <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"4px 0", borderBottom:i<resultado.times.length-1?"1px solid rgba(255,255,255,0.05)":"none" }}>
+                              <span style={{ color:"rgba(255,255,255,0.6)", fontSize:12 }}>Time {String.fromCharCode(65+i)}</span>
+                              <span style={{ color:OURO, fontSize:12, fontWeight:700 }}>{m.toFixed(2)}</span>
+                            </div>
+                          );
+                        })}
+                        <div style={{ marginTop:8, padding:"8px 10px", borderRadius:8, background:ok?"rgba(34,197,94,0.1)":"rgba(251,146,60,0.1)", border:`1px solid ${ok?"rgba(34,197,94,0.3)":"rgba(251,146,60,0.3)"}` }}>
+                          <span style={{ fontSize:12, fontWeight:700, color:ok?"#4ade80":"#fb923c" }}>
+                            {ok?"✅ Times equilibrados":"⚠️ Diferença > 1,0 ponto — considere ajuste manual"} (Δ {maxDif.toFixed(2)})
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Painel Admin ──────────────────────────────────────────────────────────────
 function TelaAdmin({ dados, cadastro, setCadastro, votosValidacao, fase3, setFase3, config, setConfig, onVoltar }) {
   const [tab, setTab] = useState("ranking");
@@ -783,18 +1050,10 @@ function TelaAdmin({ dados, cadastro, setCadastro, votosValidacao, fase3, setFas
     return { ...j, notaFinal: nfV, votos: contagem };
   }).sort((a,b)=>(b.notaFinal||0)-(a.notaFinal||0));
 
-  // Serpentina
-  function gerarSerpentina(nT) {
+  // Serpentina — usa função global parametrizada
+  function gerarSerpentinaAdmin(nT) {
     const rf = resultadoFinal.filter(j=>j.notaFinal!==null);
-    const homens = rf.filter(j=>JOGADORES_BASE.find(x=>x.nome===j.nome)?.genero==="M");
-    const mulheres = rf.filter(j=>JOGADORES_BASE.find(x=>x.nome===j.nome)?.genero==="F");
-    const times = Array.from({length:nT},()=>({ homens:[], mulheres:[], soma:0 }));
-    // Serpentina homens
-    let dir=1, t=0;
-    homens.forEach(j => { times[t].homens.push(j); times[t].soma+=j.notaFinal||0; t+=dir; if(t>=nT){t=nT-1;dir=-1;} else if(t<0){t=0;dir=1;} });
-    // Serpentina mulheres
-    dir=1; t=0;
-    mulheres.forEach(j => { times[t].mulheres.push(j); times[t].soma+=j.notaFinal||0; t+=dir; if(t>=nT){t=nT-1;dir=-1;} else if(t<0){t=0;dir=1;} });
+    const { times } = gerarSerpentina(rf, nT, Math.ceil(rf.filter(j=>JOGADORES_BASE.find(x=>x.nome===j.nome)?.genero==="M").length/nT), Math.ceil(rf.filter(j=>JOGADORES_BASE.find(x=>x.nome===j.nome)?.genero==="F").length/nT));
     return times;
   }
 
@@ -909,7 +1168,7 @@ function TelaAdmin({ dados, cadastro, setCadastro, votosValidacao, fase3, setFas
     );
   }
 
-  const times = gerarSerpentina(nTimes);
+  const times = gerarSerpentinaAdmin(nTimes);
 
   return (
     <div style={{ minHeight:"100vh", background:CZ_CL }}>
@@ -1285,10 +1544,16 @@ export default function App() {
     );
   }
 
+  if (tela==="sorteio") {
+    const rf = calcResultadoFinal(todasRespostas, cadastro, votosValidacao, fase3);
+    return <TelaSorteio resultadoFinal={rf} onVoltar={()=>setTela("selecao")} />;
+  }
+
   return (
     <TelaSelecao onF1={nome=>{ setAvaliador(nome); setAvaliacoes(todasRespostas[nome]||{}); setJaEnviou(!!todasRespostas[nome]); setTela("avaliacao"); }}
       onF2={()=>setTela("selecao_f2")} jaAvaliaram={jaAvaliaram}
       fase2Liberada={config.fase2Liberada}
+      onSorteio={()=>setTela("sorteio")}
       onAdmin={()=>{ const s=window.prompt("Senha:"); if(s==="TiagoAdmin") setTela("admin"); else if(s!==null&&s!=="") alert("Senha incorreta!"); }} />
   );
 }
