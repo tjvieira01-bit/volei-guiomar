@@ -1,44 +1,90 @@
 import { useState, useEffect } from "react";
 
-// ── Cores VGM V2 — identidade oficial ────────────────────────────────────────
-const AZUL     = "#0047A1";   // Azul Royal oficial
-const AZUL_ESC = "#001f4d";   // Azul escuro premium
-const AZUL_MED = "#003380";   // Azul médio
-const OURO     = "#FFC107";   // Amarelo Ouro oficial
-const OURO_ESC = "#D4AF37";   // Dourado premium
-const OURO_CL  = "#FFD966";   // Ouro claro
-const PRETO    = "#000000";   // Preto premium
+// ── Cores VGM V2 ──────────────────────────────────────────────────────────────
+const AZUL     = "#0047A1";
+const AZUL_ESC = "#001f4d";
+const AZUL_MED = "#003380";
+const OURO     = "#FFC107";
+const OURO_ESC = "#D4AF37";
+const OURO_CL  = "#FFD966";
+const PRETO    = "#000000";
 const BRANCO   = "#ffffff";
-const CZ_CL    = "#0a1628";   // Fundo escuro principal
-const CZ_MED   = "#0d1f3c";   // Fundo escuro secundário
-const CZ_CARD  = "#0f2654";   // Card escuro
-const AM       = "#1a3460";   // Destaque azul suave
+const CZ_CL    = "#0a1628";
+const CZ_MED   = "#0d1f3c";
+const CZ_CARD  = "#0a1f4a";
+const AM       = "#1a3460";
 
-// ── Jogadores — 39 em ordem alfabética ───────────────────────────────────────
-const JOGADORES = [
-  "AMANDA","ANA PAULA","BARBARA F","BARBARA O","BIANCA",
-  "BRUNNA","CAMILLA","CARMEN","CHARLES","DILLEYGOR",
-  "DIORGE","EBER","EDUARDO A","EDUARDO M","ELISA",
-  "FABIULA","FLAVIA","HELENO","JEAN","JOAO",
-  "LAISSE","LEO","LORRAYNE","LUCIO","MARCIM","MARIO",
-  "MATHEUS C","MATHEUS Q","MAXWELL","MURILO","RODRIGO","RUBENS",
-  "SIDNEY","TAINAH","TIAGO","VAGNO","VINI ALVES",
-  "WAGNER","YUGUI"
+// ── Jogadores com gênero pré-definido ────────────────────────────────────────
+const JOGADORES_BASE = [
+  { nome:"AMANDA",     genero:"F" }, { nome:"ANA PAULA",  genero:"F" },
+  { nome:"BARBARA F",  genero:"F" }, { nome:"BARBARA O",  genero:"F" },
+  { nome:"BIANCA",     genero:"F" }, { nome:"BRUNNA",     genero:"F" },
+  { nome:"CAMILLA",    genero:"F" }, { nome:"CARMEN",     genero:"F" },
+  { nome:"CHARLES",    genero:"M" }, { nome:"DILLEYGOR",  genero:"M" },
+  { nome:"DIORGE",     genero:"M" }, { nome:"EBER",       genero:"M" },
+  { nome:"EDUARDO A",  genero:"M" }, { nome:"EDUARDO M",  genero:"M" },
+  { nome:"ELISA",      genero:"F" }, { nome:"FABIULA",    genero:"F" },
+  { nome:"FLAVIA",     genero:"F" }, { nome:"HELENO",     genero:"M" },
+  { nome:"JEAN",       genero:"M" }, { nome:"JOAO",       genero:"M" },
+  { nome:"LAISSE",     genero:"F" }, { nome:"LEO",        genero:"M" },
+  { nome:"LORRAYNE",   genero:"F" }, { nome:"LUCIO",      genero:"M" },
+  { nome:"MARCIM",     genero:"M" }, { nome:"MARIO",      genero:"M" },
+  { nome:"MATHEUS C",  genero:"M" }, { nome:"MATHEUS Q",  genero:"M" },
+  { nome:"MAXWELL",    genero:"M" }, { nome:"MURILO",     genero:"M" },
+  { nome:"RODRIGO",    genero:"M" }, { nome:"RUBENS",     genero:"M" },
+  { nome:"SIDNEY",     genero:"M" }, { nome:"TAINAH",     genero:"F" },
+  { nome:"TIAGO",      genero:"M" }, { nome:"VAGNO",      genero:"M" },
+  { nome:"VINI ALVES", genero:"M" }, { nome:"WAGNER",     genero:"M" },
+  { nome:"YUGUI",      genero:"M" },
 ];
-
-const CRITERIOS = [
-  { key:"tecnica", label:"Técnica",  icon:"⚡", peso:0.40, desc:"Saque, recepção, ataque, bloqueio, defesa" },
-  { key:"fisico",  label:"Físico",   icon:"🏃", peso:0.25, desc:"Velocidade, salto e resistência" },
-  { key:"tatica",  label:"Tática",   icon:"🧠", peso:0.25, desc:"Posicionamento e leitura de jogo" },
-  { key:"atitude", label:"Atitude",  icon:"🤝", peso:0.10, desc:"Fair play, comprometimento, incentivo" },
-];
-
-const NOTAS = [0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,7,7.5,8,8.5,9,9.5,10];
+const JOGADORES = JOGADORES_BASE.map(j => j.nome);
+const TOTAL_VOTANTES = JOGADORES.length;
 const FIREBASE_URL = "https://volei-guiomar-default-rtdb.firebaseio.com";
-const TOTAL_VOTANTES = JOGADORES.length; // 39
+
+// ── Tabela altura → nota base ─────────────────────────────────────────────────
+function notaBaseAltura(altura, genero) {
+  if (!altura) return null;
+  const h = Number(altura);
+  if (genero === "M") {
+    if (h < 165) return 1;
+    if (h <= 172) return 2;
+    if (h <= 179) return 3;
+    if (h <= 186) return 4;
+    if (h <= 193) return 5;
+    if (h <= 200) return 6;
+    return 7;
+  } else {
+    if (h < 155) return 1;
+    if (h <= 162) return 2;
+    if (h <= 169) return 3;
+    if (h <= 176) return 4;
+    if (h <= 183) return 5;
+    if (h <= 190) return 6;
+    return 7;
+  }
+}
+
+function calcFisico(altura, genero, mobilidade) {
+  const base = notaBaseAltura(altura, genero);
+  if (base === null || mobilidade === null || mobilidade === undefined) return null;
+  return Math.min(10, base + Number(mobilidade));
+}
+
+function notaFinalV2(tecnico, fisico, leitura) {
+  if (tecnico===null||fisico===null||leitura===null) return null;
+  return Math.round(((tecnico*0.6)+(fisico*0.25)+(leitura*0.15))*2)/2;
+}
+
+function leituraTotal(sub) {
+  if (!sub) return null;
+  const { rotacao, espacos, decisao, comunicacao } = sub;
+  if ([rotacao,espacos,decisao,comunicacao].some(v=>v===null||v===undefined)) return null;
+  return Number(rotacao)+Number(espacos)+Number(decisao)+Number(comunicacao);
+}
 
 // ── Níveis ────────────────────────────────────────────────────────────────────
 function nivelLabel(nota) {
+  if (!nota) return "—";
   if (nota >= 9.0) return "💎 Diamante";
   if (nota >= 8.0) return "🥇 Platina";
   if (nota >= 7.0) return "🥈 Ouro";
@@ -47,133 +93,77 @@ function nivelLabel(nota) {
 }
 
 function notaColor(n) {
-  if (n === null || n === undefined || n === "") return "#e2e8f0";
-  if (n <= 2)  return "#fecaca";
-  if (n <= 4)  return "#fed7aa";
-  if (n <= 6)  return "#fef08a";
-  if (n <= 8)  return "#bbf7d0";
+  if (n===null||n===undefined||n==="") return "#1a3a6a";
+  if (n<=2)  return "#7f1d1d";
+  if (n<=4)  return "#7c2d12";
+  if (n<=6)  return "#713f12";
+  if (n<=8)  return "#14532d";
+  return "#1e3a5f";
+}
+function notaColorText(n) {
+  if (n===null||n===undefined||n==="") return "#94a3b8";
+  if (n<=2)  return "#fca5a5";
+  if (n<=4)  return "#fdba74";
+  if (n<=6)  return "#fde047";
+  if (n<=8)  return "#86efac";
   return "#93c5fd";
 }
 
-function notaFinal(notas) {
-  const vals = CRITERIOS.filter(c => notas[c.key] !== null && notas[c.key] !== undefined && notas[c.key] !== "");
-  if (vals.length < 4) return null;
-  return Math.round(CRITERIOS.reduce((acc,c) => acc + (notas[c.key] * c.peso), 0) * 2) / 2;
-}
-
 // ── Firebase ──────────────────────────────────────────────────────────────────
-async function salvarAvaliacao(avaliador, dados) {
-  const key = avaliador.replace(/[^a-zA-Z0-9]/g, "_");
+async function fbGet(path) {
   try {
-    const res = await fetch(`${FIREBASE_URL}/avaliacoes/${key}.json`, {
-      method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ avaliador, dados, timestamp: Date.now() })
+    const res = await fetch(`${FIREBASE_URL}/${path}.json`);
+    const txt = await res.text();
+    if (!res.ok||txt==="null"||!txt) return null;
+    return JSON.parse(txt);
+  } catch { return null; }
+}
+async function fbSet(path, data) {
+  try {
+    const res = await fetch(`${FIREBASE_URL}/${path}.json`, {
+      method:"PUT", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify(data)
     });
     return res.ok;
-  } catch(e) { return false; }
+  } catch { return false; }
 }
-
-async function carregarAvaliacoes() {
+async function fbPatch(path, data) {
   try {
-    const res = await fetch(`${FIREBASE_URL}/avaliacoes.json`);
-    const texto = await res.text();
-    if (!res.ok || texto === "null" || !texto) return {};
-    const data = JSON.parse(texto);
-    if (!data) return {};
-    const resultado = {};
-    Object.values(data).forEach(entry => {
-      if (entry && entry.avaliador) resultado[entry.avaliador] = entry.dados;
-    });
-    return resultado;
-  } catch(e) { return {}; }
-}
-
-async function salvarValidacao(votante, votos) {
-  const key = votante.replace(/[^a-zA-Z0-9]/g, "_");
-  try {
-    const res = await fetch(`${FIREBASE_URL}/validacao/${key}.json`, {
-      method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ votante, votos, timestamp: Date.now() })
+    const res = await fetch(`${FIREBASE_URL}/${path}.json`, {
+      method:"PATCH", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify(data)
     });
     return res.ok;
-  } catch(e) { return false; }
+  } catch { return false; }
 }
 
-async function carregarValidacao() {
-  try {
-    const res = await fetch(`${FIREBASE_URL}/validacao.json`);
-    const texto = await res.text();
-    if (!res.ok || texto === "null" || !texto) return {};
-    const data = JSON.parse(texto);
-    if (!data) return {};
-    const resultado = {};
-    Object.values(data).forEach(entry => {
-      if (entry && entry.votante) resultado[entry.votante] = entry.votos;
-    });
-    return resultado;
-  } catch(e) { return {}; }
-}
-
-async function carregarConfig() {
-  try {
-    const res = await fetch(`${FIREBASE_URL}/config.json`);
-    const texto = await res.text();
-    if (!res.ok || texto === "null" || !texto) return { fase2Liberada: false };
-    return JSON.parse(texto) || { fase2Liberada: false };
-  } catch(e) { return { fase2Liberada: false }; }
-}
-
-async function salvarConfig(config) {
-  try {
-    await fetch(`${FIREBASE_URL}/config.json`, {
-      method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(config)
-    });
-  } catch(e) {}
-}
-
-// ── Exportar CSV ──────────────────────────────────────────────────────────────
-function exportarCSV(consolidado, dados, votosValidacao) {
-  const sep = ";";
-  const linhas = [];
-  linhas.push("VOLEI GUIOMAR DE MELO — Avaliacoes Consolidadas");
-  linhas.push(`Exportado em: ${new Date().toLocaleDateString("pt-BR")} ${new Date().toLocaleTimeString("pt-BR")}`);
-  linhas.push("");
-  linhas.push("=== RANKING FINAL ===");
-  linhas.push(["Pos","Jogador","Nivel","Tecnica","Fisico","Tatica","Atitude","NOTA FINAL","Avaliacoes"].join(sep));
-  consolidado.forEach((j,i) => {
-    linhas.push([i+1,j.nome,nivelLabel(j.nf||0),
-      j.medias.tecnica?.toFixed(1)||"—",j.medias.fisico?.toFixed(1)||"—",
-      j.medias.tatica?.toFixed(1)||"—",j.medias.atitude?.toFixed(1)||"—",
-      j.nf?.toFixed(1)||"—",j.qtd].join(sep));
-  });
-  linhas.push("");
-  linhas.push("=== NOTAS PARA O TEAMS GENERATION ===");
-  linhas.push(["Jogador","Posicao","Nota 0-10","Nivel"].join(sep));
-  consolidado.forEach(j => {
-    linhas.push([j.nome,"",j.nf?.toFixed(1)||"—",nivelLabel(j.nf||0)].join(sep));
-  });
-  const csv = "\uFEFF" + linhas.join("\n");
-  const blob = new Blob([csv], { type:"text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `VGM_Avaliacoes_${new Date().toLocaleDateString("pt-BR").replace(/\//g,"-")}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+async function carregarTudo() {
+  const [avalData, validData, fase3Data, configData, cadastroData] = await Promise.all([
+    fbGet("avaliacoes"), fbGet("validacao"), fbGet("fase3"),
+    fbGet("config"), fbGet("cadastro")
+  ]);
+  const avaliacoes = {};
+  if (avalData) Object.values(avalData).forEach(e => { if(e?.avaliador) avaliacoes[e.avaliador]=e.dados; });
+  const validacao = {};
+  if (validData) Object.values(validData).forEach(e => { if(e?.votante) validacao[e.votante]=e.votos; });
+  const fase3 = fase3Data || {};
+  const config = configData || { fase2Liberada:false, fase3Liberada:false };
+  const cadastro = cadastroData || {};
+  return { avaliacoes, validacao, fase3, config, cadastro };
 }
 
 // ── Header VGM ────────────────────────────────────────────────────────────────
-function Header({ titulo, onVoltar, direita }) {
+function Header({ titulo, subtitulo, onVoltar, direita }) {
   return (
     <div style={{ background:`linear-gradient(135deg, ${PRETO} 0%, ${AZUL_ESC} 50%, ${AZUL_MED} 100%)`, padding:"0.85rem 1.25rem", display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10, boxShadow:`0 2px 20px rgba(0,0,0,0.5), 0 1px 0 ${OURO_ESC}` }}>
       {onVoltar
-        ? <button onClick={onVoltar} style={{ background:`rgba(245,168,0,0.15)`, border:`1px solid rgba(245,168,0,0.35)`, color:OURO, borderRadius:8, padding:"6px 12px", cursor:"pointer", fontSize:16, lineHeight:1 }}>←</button>
-        : <img src="/VGM.jpg" alt="Logo VGM" style={{ width:36, height:36, borderRadius:8, objectFit:"cover", border:`2px solid ${OURO}` }} />
+        ? <button onClick={onVoltar} style={{ background:`rgba(255,193,7,0.15)`, border:`1px solid rgba(212,175,55,0.4)`, color:OURO, borderRadius:8, padding:"6px 12px", cursor:"pointer", fontSize:16, lineHeight:1 }}>←</button>
+        : <img src="/VGM.png" alt="VGM" style={{ width:38, height:38, borderRadius:8, objectFit:"cover", border:`2px solid ${OURO_ESC}` }} />
       }
       <div style={{ flex:1 }}>
-        <div style={{ color:OURO_ESC, fontSize:9, fontWeight:700, letterSpacing:2, textTransform:"uppercase" }}>★ VOLEI GUIOMAR DE MELO ★</div>
+        <div style={{ color:OURO_ESC, fontSize:9, fontWeight:700, letterSpacing:2 }}>★ VOLEI GUIOMAR DE MELO ★</div>
         <div style={{ color:BRANCO, fontSize:15, fontWeight:700 }}>{titulo}</div>
+        {subtitulo && <div style={{ color:"rgba(255,255,255,0.5)", fontSize:11 }}>{subtitulo}</div>}
       </div>
       {direita}
     </div>
@@ -181,24 +171,24 @@ function Header({ titulo, onVoltar, direita }) {
 }
 
 // ── Tela Seleção ──────────────────────────────────────────────────────────────
-function TelaSelecao({ onSelectFase1, onSelectFase2, jaAvaliaram, jaVotaramFase2, fase2Liberada, onAdmin }) {
+function TelaSelecao({ onF1, onF2, jaAvaliaram, jaVotaramF2, fase2Liberada, onAdmin }) {
   const [busca, setBusca] = useState("");
   const filtrados = JOGADORES.filter(j => j.toLowerCase().includes(busca.toLowerCase()));
-  const pct = Math.round((jaAvaliaram.length / TOTAL_VOTANTES) * 100);
+  const pct = Math.round((jaAvaliaram.length/TOTAL_VOTANTES)*100);
 
   return (
-    <div style={{ minHeight:"100vh", background:`radial-gradient(ellipse at top, ${AZUL_MED} 0%, ${AZUL_ESC} 40%, ${PRETO} 100%)`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"2rem 1rem", position:"relative", overflow:"hidden" }}>
+    <div style={{ minHeight:"100vh", background:`radial-gradient(ellipse at top, ${AZUL_MED} 0%, ${AZUL_ESC} 40%, ${PRETO} 100%)`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"2rem 1rem" }}>
       <div style={{ marginBottom:"1.5rem", textAlign:"center" }}>
-        <img src="/VGM.jpg" alt="Logo" style={{ width:110, height:110, borderRadius:20, objectFit:"cover", boxShadow:`0 0 0 4px ${OURO}`, marginBottom:14 }} />
+        <img src="/VGM.png" alt="Logo" style={{ width:110, height:110, borderRadius:20, objectFit:"cover", boxShadow:`0 0 0 3px ${OURO_ESC}, 0 0 25px rgba(255,193,7,0.25)`, marginBottom:14 }} />
         <h1 style={{ color:OURO, fontFamily:"'Syne',sans-serif", fontSize:22, fontWeight:800, margin:0 }}>Guiomar de Melo</h1>
-        <p style={{ color:OURO, fontSize:11, fontWeight:700, marginTop:4, letterSpacing:2, textTransform:"uppercase" }}>União · Força · Evolução</p>
-        <p style={{ color:"rgba(255,255,255,0.4)", fontSize:11, marginTop:2 }}>Fundado em 2020 · Sistema de avaliação</p>
+        <p style={{ color:OURO_ESC, fontSize:10, fontWeight:700, marginTop:3, letterSpacing:2 }}>UNIÃO · FORÇA · EVOLUÇÃO</p>
+        <p style={{ color:"rgba(255,255,255,0.35)", fontSize:10, marginTop:2 }}>Fundado em 2020 · Sistema de avaliação V2</p>
       </div>
 
-      {/* Progresso fase 1 */}
+      {/* Progresso */}
       <div style={{ width:"100%", maxWidth:400, marginBottom:12, padding:"10px 16px", background:`rgba(0,31,77,0.6)`, borderRadius:14, border:`1px solid rgba(212,175,55,0.3)` }}>
         <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
-          <span style={{ color:"rgba(255,255,255,0.7)", fontSize:11, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>⚡ Fase 1 — Avaliação</span>
+          <span style={{ color:"rgba(255,255,255,0.7)", fontSize:11, fontWeight:700, letterSpacing:1 }}>⚡ FASE 1 — AVALIAÇÃO</span>
           <span style={{ color:OURO, fontSize:12, fontWeight:800 }}>{jaAvaliaram.length}<span style={{ color:"rgba(255,255,255,0.4)", fontWeight:400 }}>/{TOTAL_VOTANTES}</span></span>
         </div>
         <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:20, height:6, overflow:"hidden" }}>
@@ -207,25 +197,20 @@ function TelaSelecao({ onSelectFase1, onSelectFase2, jaAvaliaram, jaVotaramFase2
         <div style={{ color:"rgba(255,255,255,0.4)", fontSize:10, marginTop:4, textAlign:"right" }}>{pct}% concluído</div>
       </div>
 
-      {/* Lista de jogadores */}
-      <div style={{ background:`rgba(0,31,77,0.8)`, backdropFilter:"blur(16px)", borderRadius:20, padding:"1.5rem", width:"100%", maxWidth:400, border:`1px solid ${OURO_ESC}`, marginBottom:12, boxShadow:`0 0 30px rgba(255,193,7,0.1)` }}>
-        <p style={{ color:OURO, fontSize:12, marginBottom:"0.75rem", textAlign:"center", fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>
-          📝 Fase 1 — Selecione seu nome para avaliar
-        </p>
-        <input placeholder="🔍 Buscar seu nome..." value={busca} onChange={e => setBusca(e.target.value)}
+      {/* Lista */}
+      <div style={{ background:`rgba(0,31,77,0.8)`, backdropFilter:"blur(16px)", borderRadius:20, padding:"1.5rem", width:"100%", maxWidth:400, border:`1px solid ${OURO_ESC}`, marginBottom:12, boxShadow:`0 0 30px rgba(255,193,7,0.08)` }}>
+        <p style={{ color:OURO, fontSize:12, marginBottom:"0.75rem", textAlign:"center", fontWeight:700, letterSpacing:1 }}>📝 SELECIONE SEU NOME PARA AVALIAR</p>
+        <input placeholder="🔍 Buscar seu nome..." value={busca} onChange={e=>setBusca(e.target.value)}
           style={{ width:"100%", padding:"10px 14px", borderRadius:10, border:`1px solid ${OURO_ESC}`, background:`rgba(0,51,128,0.5)`, color:BRANCO, fontSize:14, marginBottom:10, outline:"none", boxSizing:"border-box" }} />
         <div style={{ maxHeight:260, overflowY:"auto", display:"flex", flexDirection:"column", gap:6 }}>
           {filtrados.map(j => {
             const enviou = jaAvaliaram.includes(j);
             return (
-              <button key={j} onClick={() => {
-                if (enviou) alert("🔒 Você já enviou sua avaliação. Obrigado!");
-                else onSelectFase1(j);
-              }}
-                style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"11px 16px", borderRadius:10, border: enviou ? `1px solid rgba(245,168,0,0.2)` : `1px solid rgba(255,255,255,0.1)`, background: enviou ? "rgba(245,168,0,0.07)" : "rgba(255,255,255,0.05)", color: enviou ? "rgba(255,255,255,0.4)" : BRANCO, fontSize:14, fontWeight:600, cursor: enviou ? "not-allowed":"pointer", textAlign:"left" }}>
+              <button key={j} onClick={() => { if(enviou) alert("🔒 Você já enviou sua avaliação. Obrigado!"); else onF1(j); }}
+                style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"11px 16px", borderRadius:10, border: enviou?`1px solid rgba(212,175,55,0.2)`:`1px solid rgba(255,255,255,0.08)`, background: enviou?"rgba(212,175,55,0.06)":"rgba(255,255,255,0.04)", color: enviou?"rgba(255,255,255,0.35)":BRANCO, fontSize:14, fontWeight:600, cursor: enviou?"not-allowed":"pointer", textAlign:"left" }}>
                 <span>{j}</span>
-                {enviou ? <span style={{ fontSize:11, color:OURO, background:"rgba(245,168,0,0.15)", padding:"2px 8px", borderRadius:20 }}>🔒 enviado</span>
-                        : <span style={{ color:"rgba(255,255,255,0.3)", fontSize:16 }}>›</span>}
+                {enviou ? <span style={{ fontSize:11, color:OURO_ESC, background:"rgba(212,175,55,0.12)", padding:"2px 8px", borderRadius:20 }}>🔒 enviado</span>
+                        : <span style={{ color:"rgba(255,255,255,0.25)", fontSize:16 }}>›</span>}
               </button>
             );
           })}
@@ -235,24 +220,19 @@ function TelaSelecao({ onSelectFase1, onSelectFase2, jaAvaliaram, jaVotaramFase2
       {/* Fase 2 */}
       {fase2Liberada ? (
         <div style={{ width:"100%", maxWidth:400, marginBottom:8 }}>
-          <p style={{ color:OURO, fontSize:12, textAlign:"center", marginBottom:8, fontWeight:600 }}>
-            🗳️ Fase 2 liberada — valide as notas!
-          </p>
-          <button onClick={onSelectFase2}
-            style={{ width:"100%", padding:"14px", borderRadius:14, border:"none", background:OURO, color:AZUL_ESC, fontSize:14, fontWeight:800, cursor:"pointer", boxShadow:`0 4px 16px rgba(245,168,0,0.4)` }}>
+          <button onClick={onF2} style={{ width:"100%", padding:"14px", borderRadius:14, border:"none", background:`linear-gradient(135deg, ${OURO} 0%, ${OURO_ESC} 100%)`, color:AZUL_ESC, fontSize:14, fontWeight:800, cursor:"pointer", boxShadow:`0 4px 20px rgba(255,193,7,0.35)`, letterSpacing:0.5 }}>
             🗳️ Validar notas — 2ª rodada
           </button>
         </div>
       ) : (
-        <div style={{ width:"100%", maxWidth:400, marginBottom:8, padding:"14px 16px", borderRadius:14, border:`1px dashed rgba(212,175,55,0.25)`, background:`rgba(0,20,60,0.5)`, textAlign:"center" }}>
-          <div style={{ color:"rgba(255,193,7,0.5)", fontSize:12, fontWeight:700, letterSpacing:1 }}>🔒 FASE 2 — BLOQUEADA</div>
-          <div style={{ color:"rgba(255,255,255,0.35)", fontSize:11, marginTop:4 }}>Disponível após todos os {TOTAL_VOTANTES} enviarem a fase 1</div>
-          <div style={{ color:OURO, fontSize:11, marginTop:3, fontWeight:700 }}>{TOTAL_VOTANTES - jaAvaliaram.length} ainda {TOTAL_VOTANTES - jaAvaliaram.length !== 1 ? "faltam" : "falta"}</div>
+        <div style={{ width:"100%", maxWidth:400, marginBottom:8, padding:"14px 16px", borderRadius:14, border:`1px dashed rgba(212,175,55,0.2)`, background:`rgba(0,20,60,0.5)`, textAlign:"center" }}>
+          <div style={{ color:"rgba(255,193,7,0.45)", fontSize:12, fontWeight:700, letterSpacing:1 }}>🔒 FASE 2 — BLOQUEADA</div>
+          <div style={{ color:"rgba(255,255,255,0.3)", fontSize:11, marginTop:4 }}>Aguardando todos os {TOTAL_VOTANTES} enviarem a fase 1</div>
+          <div style={{ color:OURO_ESC, fontSize:11, marginTop:3, fontWeight:700 }}>{TOTAL_VOTANTES-jaAvaliaram.length} ainda {TOTAL_VOTANTES-jaAvaliaram.length!==1?"faltam":"falta"}</div>
         </div>
       )}
 
-      <button onClick={onAdmin}
-        style={{ marginTop:10, background:"none", border:`1px solid rgba(212,175,55,0.2)`, color:"rgba(255,255,255,0.25)", fontSize:10, borderRadius:8, padding:"5px 14px", cursor:"pointer", letterSpacing:1 }}>
+      <button onClick={onAdmin} style={{ marginTop:10, background:"none", border:`1px solid rgba(212,175,55,0.15)`, color:"rgba(255,255,255,0.25)", fontSize:10, borderRadius:8, padding:"5px 14px", cursor:"pointer", letterSpacing:1 }}>
         ⚙ painel administrador
       </button>
     </div>
@@ -260,141 +240,167 @@ function TelaSelecao({ onSelectFase1, onSelectFase2, jaAvaliaram, jaVotaramFase2
 }
 
 // ── Tela Avaliação Fase 1 ─────────────────────────────────────────────────────
-function TelaAvaliacao({ avaliador, avaliacoes, setAvaliacoes, onEnviar, enviando, jaEnviou, onVoltar }) {
+function TelaAvaliacao({ avaliador, avaliacoes, setAvaliacoes, cadastro, onEnviar, enviando, jaEnviou, onVoltar }) {
   const [view, setView] = useState("lista");
-  const [jogadorAtual, setJogadorAtual] = useState(null);
-  const lista = JOGADORES.filter(j => j !== avaliador);
+  const [jogAtual, setJogAtual] = useState(null);
+  const lista = JOGADORES.filter(j=>j!==avaliador);
 
-  const preenchidos = lista.filter(j => {
-    const av = avaliacoes[j] || {};
-    return CRITERIOS.every(c => av[c.key] !== undefined && av[c.key] !== "");
-  }).length;
-  const pct = Math.round((preenchidos / lista.length) * 100);
-
-  function setNota(jog, crit, val) {
-    setAvaliacoes(prev => ({ ...prev, [jog]: { ...(prev[jog]||{}), [crit]: val } }));
+  function getAv(jog) { return avaliacoes[jog]||{}; }
+  function setField(jog, field, val) {
+    setAvaliacoes(prev=>({ ...prev, [jog]:{ ...(prev[jog]||{}), [field]:val } }));
+  }
+  function setSubLeitura(jog, sub, val) {
+    const curr = (avaliacoes[jog]||{}).leitura_sub||{};
+    setAvaliacoes(prev=>({ ...prev, [jog]:{ ...(prev[jog]||{}), leitura_sub:{ ...curr, [sub]:val } } }));
   }
 
-  // Vista: jogador
-  if (view === "jogador" && jogadorAtual) {
-    const notas = avaliacoes[jogadorAtual] || {};
-    const nf = notaFinal(notas);
-    const idx = lista.indexOf(jogadorAtual);
-    const prev = idx > 0 ? lista[idx-1] : null;
-    const next = idx < lista.length-1 ? lista[idx+1] : null;
+  function isCompleto(jog) {
+    const av = getAv(jog);
+    const lt = leituraTotal(av.leitura_sub);
+    return av.tecnico!==undefined && av.tecnico!=="" && av.fisico_mob!==undefined && lt!==null;
+  }
+
+  const preenchidos = lista.filter(j=>isCompleto(j)).length;
+  const pct = Math.round((preenchidos/lista.length)*100);
+
+  if (view==="jogador"&&jogAtual) {
+    const av = getAv(jogAtual);
+    const cad = cadastro[jogAtual]||{};
+    const genero = JOGADORES_BASE.find(j=>j.nome===jogAtual)?.genero||"M";
+    const notaBase = notaBaseAltura(cad.altura, genero);
+    const mob = av.fisico_mob!==undefined?Number(av.fisico_mob):null;
+    const fisico = notaBase!==null&&mob!==null?Math.min(10,notaBase+mob):null;
+    const lt = leituraTotal(av.leitura_sub);
+    const nf = notaFinalV2(av.tecnico!==undefined?Number(av.tecnico):null, fisico, lt);
+    const idx = lista.indexOf(jogAtual);
+    const prev = idx>0?lista[idx-1]:null;
+    const next = idx<lista.length-1?lista[idx+1]:null;
+    const sub = av.leitura_sub||{};
 
     return (
       <div style={{ minHeight:"100vh", background:CZ_CL }}>
-        <Header titulo={jogadorAtual} onVoltar={() => setView("lista")}
-          direita={nf !== null && (
-            <div style={{ background:OURO, borderRadius:10, padding:"5px 14px", textAlign:"center", minWidth:52 }}>
-              <div style={{ fontSize:9, color:AZUL_ESC, fontWeight:700 }}>NOTA</div>
-              <div style={{ fontSize:20, color:AZUL_ESC, fontWeight:800, lineHeight:1 }}>{nf.toFixed(1)}</div>
-            </div>
-          )}
+        <Header titulo={jogAtual} subtitulo={`${genero==="F"?"♀":"♂"} ${cad.altura?cad.altura+"cm":""}`} onVoltar={()=>setView("lista")}
+          direita={nf!==null&&<div style={{ background:`linear-gradient(135deg,${OURO},${OURO_ESC})`, borderRadius:10, padding:"5px 14px", textAlign:"center", minWidth:52 }}>
+            <div style={{ fontSize:9, color:AZUL_ESC, fontWeight:700 }}>NOTA</div>
+            <div style={{ fontSize:20, color:AZUL_ESC, fontWeight:800, lineHeight:1 }}>{nf.toFixed(1)}</div>
+          </div>}
         />
-        <div style={{ padding:"1rem" }}>
-          {CRITERIOS.map(c => {
-            const val = notas[c.key];
-            const ok = val !== undefined && val !== "";
-            return (
-              <div key={c.key} style={{ background:CZ_CARD, borderRadius:16, padding:"1rem 1.25rem", marginBottom:10, border:`1px solid ${ok ? OURO_CL : "#e2e8f0"}` }}>
-                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
-                  <div>
-                    <div style={{ fontWeight:700, fontSize:14, color:AZUL_ESC }}>{c.icon} {c.label} <span style={{ color:"#94a3b8", fontWeight:400 }}>({Math.round(c.peso*100)}%)</span></div>
-                    <div style={{ fontSize:11, color:"#94a3b8", marginTop:2 }}>{c.desc}</div>
-                  </div>
-                  <div style={{ background: ok ? notaColor(val) : CZ_CL, borderRadius:10, minWidth:46, height:46, display:"flex", alignItems:"center", justifyContent:"center", fontSize: ok ? 18:12, fontWeight:800, color:"#1e293b", border: ok ? `2px solid ${OURO}` : "2px solid #e2e8f0" }}>
-                    {ok ? Number(val).toFixed(1) : "—"}
-                  </div>
-                </div>
-                <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
-                  {NOTAS.map(n => (
-                    <button key={n} onClick={() => setNota(jogadorAtual, c.key, n)}
-                      style={{ width:38, height:34, borderRadius:8, border: val===n ? `2px solid ${AZUL}` : "1px solid #e2e8f0", background: val===n ? AZUL : notaColor(n), color: val===n ? OURO : "#1e293b", fontSize:12, fontWeight: val===n ? 700:500, cursor:"pointer" }}>
-                      {n%1===0 ? n : n.toFixed(1)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <div style={{ display:"flex", gap:10, padding:"0 1rem 1.5rem" }}>
-          {prev && <button onClick={() => setJogadorAtual(prev)}
-            style={{ flex:1, padding:12, borderRadius:12, border:`1px solid #e2e8f0`, background:BRANCO, color:AZUL, fontSize:12, fontWeight:600, cursor:"pointer" }}>← {prev}</button>}
-          {next ? (
-            <button onClick={() => { if(nf !== null) setJogadorAtual(next); }} disabled={nf===null}
-              style={{ flex:1, padding:12, borderRadius:12, border:"none", background: nf!==null ? AZUL:"#e2e8f0", color: nf!==null ? OURO:"#94a3b8", fontSize:12, fontWeight:700, cursor: nf!==null?"pointer":"not-allowed", opacity: nf!==null?1:0.7 }}>
-              {nf===null ? "⚠️ Preencha os 4 critérios" : `${next} →`}
-            </button>
-          ) : (
-            <button onClick={() => { if(nf !== null) setView("resumo"); }} disabled={nf===null}
-              style={{ flex:1, padding:12, borderRadius:12, border:"none", background: nf!==null ? OURO:"#e2e8f0", color: nf!==null ? AZUL_ESC:"#94a3b8", fontSize:13, fontWeight:700, cursor: nf!==null?"pointer":"not-allowed", opacity: nf!==null?1:0.7 }}>
-              {nf===null ? "⚠️ Preencha os 4 critérios" : "Ver resumo ✓"}
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
+        <div style={{ padding:"1rem", display:"flex", flexDirection:"column", gap:10 }}>
 
-  // Vista: resumo
-  if (view === "resumo") {
-    const completos = lista.filter(j => {
-      const av = avaliacoes[j] || {};
-      return CRITERIOS.every(c => av[c.key] !== undefined && av[c.key] !== "");
-    });
-    const incompletos = lista.filter(j => !completos.includes(j));
-    return (
-      <div style={{ minHeight:"100vh", background:CZ_CL }}>
-        <Header titulo={`Resumo — ${avaliador}`} onVoltar={() => setView("lista")} />
-        <div style={{ padding:"1rem" }}>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:14 }}>
-            <div style={{ background:CZ_CARD, borderRadius:14, padding:"1rem", border:`1px solid ${OURO_CL}`, textAlign:"center" }}>
-              <div style={{ fontSize:28, fontWeight:800, color:AZUL }}>{completos.length}</div>
-              <div style={{ fontSize:12, color:"#64748b" }}>completos</div>
+          {/* ── Técnico ── */}
+          <div style={{ background:CZ_CARD, borderRadius:16, padding:"1rem 1.25rem", border:`1px solid rgba(212,175,55,${av.tecnico!==undefined?0.4:0.15})` }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
+              <div>
+                <div style={{ color:OURO, fontWeight:700, fontSize:14 }}>⚡ Técnico <span style={{ color:"rgba(255,255,255,0.35)", fontWeight:400, fontSize:12 }}>(60%)</span></div>
+                <div style={{ color:"rgba(255,255,255,0.45)", fontSize:11, marginTop:3 }}>Fundamentos gerais observados em jogo</div>
+                <div style={{ color:"rgba(255,255,255,0.3)", fontSize:10, marginTop:2 }}>Saque · Passe · Levantamento · Ataque · Bloqueio · Defesa</div>
+              </div>
+              <div style={{ background:av.tecnico!==undefined?notaColor(av.tecnico):CZ_MED, borderRadius:10, minWidth:46, height:46, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, fontWeight:800, color:av.tecnico!==undefined?notaColorText(av.tecnico):"#4a5568", border:`2px solid ${av.tecnico!==undefined?OURO_ESC:"rgba(255,255,255,0.1)"}` }}>
+                {av.tecnico!==undefined?Number(av.tecnico).toFixed(1):"—"}
+              </div>
             </div>
-            <div style={{ background:CZ_CARD, borderRadius:14, padding:"1rem", border:"1px solid #e2e8f0", textAlign:"center" }}>
-              <div style={{ fontSize:28, fontWeight:800, color: incompletos.length>0?"#f97316":"#22c55e" }}>{incompletos.length}</div>
-              <div style={{ fontSize:12, color:"#64748b" }}>pendentes</div>
-            </div>
-          </div>
-          {incompletos.length > 0 && (
-            <div style={{ background:"#fff7ed", borderRadius:14, padding:"1rem 1.25rem", marginBottom:14, border:"1px solid #fed7aa" }}>
-              <div style={{ fontWeight:700, fontSize:13, color:"#c2410c", marginBottom:8 }}>⚠️ Incompletos — toque para finalizar</div>
-              {incompletos.map(j => (
-                <button key={j} onClick={() => { setJogadorAtual(j); setView("jogador"); }}
-                  style={{ display:"block", width:"100%", textAlign:"left", padding:"7px 0", background:"none", border:"none", borderBottom:"1px solid #fed7aa", color:"#c2410c", fontSize:13, cursor:"pointer" }}>→ {j}</button>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
+              {[0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,7,7.5,8,8.5,9,9.5,10].map(n=>(
+                <button key={n} onClick={()=>setField(jogAtual,"tecnico",n)}
+                  style={{ width:38, height:32, borderRadius:7, border: av.tecnico===n?`2px solid ${OURO}`:`1px solid rgba(255,255,255,0.1)`, background: av.tecnico===n?AZUL:notaColor(n), color: av.tecnico===n?OURO:notaColorText(n), fontSize:11, fontWeight:av.tecnico===n?700:500, cursor:"pointer" }}>
+                  {n%1===0?n:n.toFixed(1)}
+                </button>
               ))}
             </div>
-          )}
-          <div style={{ background:CZ_CARD, borderRadius:14, border:"1px solid #e2e8f0", overflow:"hidden", marginBottom:14 }}>
-            <div style={{ background:AZUL, padding:"10px 16px", display:"flex", justifyContent:"space-between" }}>
-              <span style={{ color:OURO, fontSize:11, fontWeight:700 }}>NOTAS FINAIS</span>
-              <span style={{ color:"rgba(255,255,255,0.5)", fontSize:11 }}>{completos.length}/{lista.length}</span>
+          </div>
+
+          {/* ── Físico ── */}
+          <div style={{ background:CZ_CARD, borderRadius:16, padding:"1rem 1.25rem", border:`1px solid rgba(212,175,55,${av.fisico_mob!==undefined?0.4:0.15})` }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
+              <div>
+                <div style={{ color:OURO, fontWeight:700, fontSize:14 }}>🏃 Físico <span style={{ color:"rgba(255,255,255,0.35)", fontWeight:400, fontSize:12 }}>(25%)</span></div>
+                <div style={{ color:"rgba(255,255,255,0.45)", fontSize:11, marginTop:3 }}>
+                  {notaBase!==null?`Nota base: ${notaBase} (altura ${cad.altura||"?"}cm)`:"Altura não cadastrada — nota base indisponível"}
+                </div>
+                <div style={{ color:"rgba(255,255,255,0.3)", fontSize:10, marginTop:2 }}>Ajuste pela mobilidade observada em jogo</div>
+              </div>
+              <div style={{ background:fisico!==null?notaColor(fisico):CZ_MED, borderRadius:10, minWidth:46, height:46, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, fontWeight:800, color:fisico!==null?notaColorText(fisico):"#4a5568", border:`2px solid ${fisico!==null?OURO_ESC:"rgba(255,255,255,0.1)"}` }}>
+                {fisico!==null?fisico.toFixed(1):"—"}
+              </div>
             </div>
-            {completos.map((j,i) => {
-              const nf = notaFinal(avaliacoes[j]||{});
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8 }}>
+              {[{v:0,label:"Lento",sub:"pouca impulsão"},{v:1,label:"Abaixo",sub:"mobilidade limitada"},{v:2,label:"Boa",sub:"movimentação ativa"},{v:3,label:"Excelente",sub:"explosivo, bom salto"}].map(({v,label,sub})=>(
+                <button key={v} onClick={()=>setField(jogAtual,"fisico_mob",v)}
+                  style={{ padding:"10px 6px", borderRadius:10, border: av.fisico_mob===v?`2px solid ${OURO}`:`1px solid rgba(255,255,255,0.1)`, background: av.fisico_mob===v?AZUL:CZ_MED, cursor:"pointer", textAlign:"center" }}>
+                  <div style={{ fontSize:16, fontWeight:800, color: av.fisico_mob===v?OURO:BRANCO }}>+{v}</div>
+                  <div style={{ fontSize:10, fontWeight:700, color: av.fisico_mob===v?OURO_CL:"rgba(255,255,255,0.6)", marginTop:2 }}>{label}</div>
+                  <div style={{ fontSize:9, color:"rgba(255,255,255,0.3)", marginTop:1 }}>{sub}</div>
+                </button>
+              ))}
+            </div>
+            {notaBase!==null&&mob!==null&&<div style={{ marginTop:8, padding:"6px 10px", background:"rgba(255,193,7,0.08)", borderRadius:8, fontSize:11, color:OURO_ESC, textAlign:"center" }}>
+              Base {notaBase} + mobilidade {mob} = <strong style={{color:OURO}}>Físico {fisico}</strong>
+            </div>}
+          </div>
+
+          {/* ── Leitura de Jogo ── */}
+          <div style={{ background:CZ_CARD, borderRadius:16, padding:"1rem 1.25rem", border:`1px solid rgba(212,175,55,${lt!==null?0.4:0.15})` }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+              <div>
+                <div style={{ color:OURO, fontWeight:700, fontSize:14 }}>🧠 Leitura de Jogo <span style={{ color:"rgba(255,255,255,0.35)", fontWeight:400, fontSize:12 }}>(15%)</span></div>
+                <div style={{ color:"rgba(255,255,255,0.45)", fontSize:11, marginTop:3 }}>Some os pontos de cada subcritério</div>
+              </div>
+              <div style={{ background:lt!==null?notaColor(lt):CZ_MED, borderRadius:10, minWidth:46, height:46, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, fontWeight:800, color:lt!==null?notaColorText(lt):"#4a5568", border:`2px solid ${lt!==null?OURO_ESC:"rgba(255,255,255,0.1)"}` }}>
+                {lt!==null?lt:"—"}<span style={{fontSize:10}}>/10</span>
+              </div>
+            </div>
+            {[
+              { key:"rotacao",    label:"Sabe rodar o 6x6",              max:3, desc:"Não se perde na rotação" },
+              { key:"espacos",    label:"Posicionamento defesa/bloqueio", max:3, desc:"Ocupa bem os espaços" },
+              { key:"decisao",    label:"Tomada de decisão",              max:2, desc:"Levanta no momento certo, sabe largar" },
+              { key:"comunicacao",label:"Comunicação e organização",      max:2, desc:"Organiza e orienta o time" },
+            ].map(({ key, label, max, desc }) => {
+              const val = sub[key];
+              const opts = Array.from({length:max+1},(_,i)=>i);
               return (
-                <div key={j} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"9px 16px", borderBottom:i<completos.length-1?"1px solid #f1f5f9":"none" }}>
-                  <span style={{ fontSize:13, fontWeight:500 }}>{j}</span>
-                  <span style={{ background:notaColor(nf), borderRadius:8, padding:"3px 12px", fontSize:13, fontWeight:700 }}>{nf!==null?nf.toFixed(1):"—"}</span>
+                <div key={key} style={{ marginBottom:10 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", marginBottom:5 }}>
+                    <div>
+                      <div style={{ color:BRANCO, fontSize:12, fontWeight:600 }}>{label} <span style={{ color:"rgba(255,255,255,0.35)", fontSize:11 }}>(0–{max})</span></div>
+                      <div style={{ color:"rgba(255,255,255,0.35)", fontSize:10 }}>{desc}</div>
+                    </div>
+                    <span style={{ color:val!==undefined?OURO:"rgba(255,255,255,0.25)", fontWeight:800, fontSize:16, minWidth:24, textAlign:"center" }}>{val!==undefined?val:"—"}</span>
+                  </div>
+                  <div style={{ display:"flex", gap:8 }}>
+                    {opts.map(o=>(
+                      <button key={o} onClick={()=>setSubLeitura(jogAtual,key,o)}
+                        style={{ flex:1, padding:"8px 4px", borderRadius:8, border: val===o?`2px solid ${OURO}`:`1px solid rgba(255,255,255,0.1)`, background: val===o?AZUL:CZ_MED, color: val===o?OURO:BRANCO, fontSize:13, fontWeight:val===o?800:500, cursor:"pointer" }}>
+                        {o}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               );
             })}
           </div>
-          {jaEnviou ? (
-            <div style={{ background:"#f0fdf4", border:"1px solid #86efac", borderRadius:14, padding:"1.5rem", textAlign:"center" }}>
-              <div style={{ fontSize:36, marginBottom:8 }}>✅</div>
-              <div style={{ fontWeight:700, color:"#166534", fontSize:15 }}>Avaliação enviada!</div>
-              <div style={{ color:"#16a34a", fontSize:13, marginTop:4 }}>Obrigado, {avaliador}!</div>
-              <button onClick={onVoltar} style={{ marginTop:14, padding:"10px 24px", borderRadius:10, border:"none", background:AZUL, color:OURO, fontSize:13, fontWeight:700, cursor:"pointer" }}>Voltar ao início</button>
+
+          {/* Nota final preview */}
+          {nf!==null&&<div style={{ background:`linear-gradient(135deg, ${AZUL_ESC}, ${AZUL_MED})`, borderRadius:14, padding:"1rem", border:`1px solid ${OURO_ESC}`, textAlign:"center" }}>
+            <div style={{ color:OURO_ESC, fontSize:10, fontWeight:700, letterSpacing:1, marginBottom:4 }}>NOTA FINAL CALCULADA</div>
+            <div style={{ fontSize:36, fontWeight:800, color:OURO }}>{nf.toFixed(1)}</div>
+            <div style={{ color:"rgba(255,255,255,0.45)", fontSize:10, marginTop:4 }}>
+              ({Number(av.tecnico).toFixed(1)}×0,6) + ({fisico.toFixed(1)}×0,25) + ({lt}×0,15)
             </div>
-          ) : (
-            <button onClick={onEnviar} disabled={enviando || completos.length===0}
-              style={{ width:"100%", padding:16, borderRadius:14, border:"none", background: completos.length>0 ? AZUL:"#e2e8f0", color: completos.length>0 ? OURO:"#94a3b8", fontSize:16, fontWeight:700, cursor: completos.length>0?"pointer":"default" }}>
-              {enviando ? "Enviando..." : `Enviar avaliação (${completos.length}/${lista.length})`}
+            <div style={{ color:OURO_ESC, fontSize:11, fontWeight:600, marginTop:3 }}>{nivelLabel(nf)}</div>
+          </div>}
+        </div>
+
+        <div style={{ display:"flex", gap:10, padding:"0 1rem 1.5rem" }}>
+          {prev&&<button onClick={()=>setJogAtual(prev)} style={{ flex:1, padding:12, borderRadius:12, border:`1px solid rgba(255,255,255,0.1)`, background:CZ_CARD, color:BRANCO, fontSize:12, fontWeight:600, cursor:"pointer" }}>← {prev}</button>}
+          {next?(
+            <button onClick={()=>{ if(isCompleto(jogAtual)) setJogAtual(next); }} disabled={!isCompleto(jogAtual)}
+              style={{ flex:1, padding:12, borderRadius:12, border:"none", background:isCompleto(jogAtual)?AZUL:CZ_MED, color:isCompleto(jogAtual)?OURO:"rgba(255,255,255,0.3)", fontSize:12, fontWeight:700, cursor:isCompleto(jogAtual)?"pointer":"not-allowed" }}>
+              {!isCompleto(jogAtual)?"⚠️ Complete os 3 pilares":`${next} →`}
+            </button>
+          ):(
+            <button onClick={()=>{ if(isCompleto(jogAtual)) setView("resumo"); }} disabled={!isCompleto(jogAtual)}
+              style={{ flex:1, padding:12, borderRadius:12, border:"none", background:isCompleto(jogAtual)?`linear-gradient(135deg,${OURO},${OURO_ESC})`:CZ_MED, color:isCompleto(jogAtual)?AZUL_ESC:"rgba(255,255,255,0.3)", fontSize:13, fontWeight:700, cursor:isCompleto(jogAtual)?"pointer":"not-allowed" }}>
+              {!isCompleto(jogAtual)?"⚠️ Complete os 3 pilares":"Ver resumo ✓"}
             </button>
           )}
         </div>
@@ -402,38 +408,108 @@ function TelaAvaliacao({ avaliador, avaliacoes, setAvaliacoes, onEnviar, enviand
     );
   }
 
-  // Vista: lista
+  if (view==="resumo") {
+    const completos = lista.filter(j=>isCompleto(j));
+    const incompletos = lista.filter(j=>!isCompleto(j));
+    return (
+      <div style={{ minHeight:"100vh", background:CZ_CL }}>
+        <Header titulo={`Resumo — ${avaliador}`} onVoltar={()=>setView("lista")} />
+        <div style={{ padding:"1rem" }}>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:14 }}>
+            <div style={{ background:CZ_CARD, borderRadius:14, padding:"1rem", border:`1px solid ${OURO_ESC}`, textAlign:"center" }}>
+              <div style={{ fontSize:28, fontWeight:800, color:OURO }}>{completos.length}</div>
+              <div style={{ fontSize:12, color:"rgba(255,255,255,0.5)" }}>completos</div>
+            </div>
+            <div style={{ background:CZ_CARD, borderRadius:14, padding:"1rem", border:"1px solid rgba(255,255,255,0.1)", textAlign:"center" }}>
+              <div style={{ fontSize:28, fontWeight:800, color:incompletos.length>0?"#f97316":"#22c55e" }}>{incompletos.length}</div>
+              <div style={{ fontSize:12, color:"rgba(255,255,255,0.5)" }}>pendentes</div>
+            </div>
+          </div>
+          {incompletos.length>0&&(
+            <div style={{ background:"rgba(251,146,60,0.1)", borderRadius:14, padding:"1rem 1.25rem", marginBottom:14, border:"1px solid rgba(251,146,60,0.3)" }}>
+              <div style={{ fontWeight:700, fontSize:13, color:"#fb923c", marginBottom:8 }}>⚠️ Incompletos — toque para finalizar</div>
+              {incompletos.map(j=><button key={j} onClick={()=>{ setJogAtual(j); setView("jogador"); }} style={{ display:"block", width:"100%", textAlign:"left", padding:"7px 0", background:"none", border:"none", borderBottom:"1px solid rgba(251,146,60,0.2)", color:"#fb923c", fontSize:13, cursor:"pointer" }}>→ {j}</button>)}
+            </div>
+          )}
+          <div style={{ background:CZ_CARD, borderRadius:14, border:`1px solid rgba(255,255,255,0.1)`, overflow:"hidden", marginBottom:14 }}>
+            <div style={{ background:AZUL_ESC, padding:"10px 16px", display:"flex", justifyContent:"space-between", borderBottom:`1px solid ${OURO_ESC}` }}>
+              <span style={{ color:OURO, fontSize:11, fontWeight:700 }}>NOTAS CALCULADAS</span>
+              <span style={{ color:"rgba(255,255,255,0.4)", fontSize:11 }}>{completos.length}/{lista.length}</span>
+            </div>
+            {completos.map((j,i)=>{
+              const av=getAv(j);
+              const cad=cadastro[j]||{};
+              const gen=JOGADORES_BASE.find(x=>x.nome===j)?.genero||"M";
+              const nb=notaBaseAltura(cad.altura,gen);
+              const mob=av.fisico_mob!==undefined?Number(av.fisico_mob):null;
+              const fis=nb!==null&&mob!==null?Math.min(10,nb+mob):null;
+              const lt=leituraTotal(av.leitura_sub);
+              const nf=notaFinalV2(av.tecnico!==undefined?Number(av.tecnico):null,fis,lt);
+              return (
+                <div key={j} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"9px 16px", borderBottom:i<completos.length-1?"1px solid rgba(255,255,255,0.05)":"none" }}>
+                  <span style={{ fontSize:13, fontWeight:500, color:BRANCO }}>{j}</span>
+                  <span style={{ background:nf!==null?notaColor(nf):CZ_MED, color:nf!==null?notaColorText(nf):"#94a3b8", borderRadius:8, padding:"3px 12px", fontSize:13, fontWeight:700 }}>{nf!==null?nf.toFixed(1):"—"}</span>
+                </div>
+              );
+            })}
+          </div>
+          {jaEnviou?(
+            <div style={{ background:"rgba(34,197,94,0.1)", border:"1px solid rgba(34,197,94,0.3)", borderRadius:14, padding:"1.5rem", textAlign:"center" }}>
+              <div style={{ fontSize:36, marginBottom:8 }}>✅</div>
+              <div style={{ fontWeight:700, color:"#4ade80", fontSize:15 }}>Avaliação enviada!</div>
+              <div style={{ color:"rgba(74,222,128,0.7)", fontSize:13, marginTop:4 }}>Obrigado, {avaliador}!</div>
+              <button onClick={onVoltar} style={{ marginTop:14, padding:"10px 24px", borderRadius:10, border:"none", background:AZUL, color:OURO, fontSize:13, fontWeight:700, cursor:"pointer" }}>Voltar ao início</button>
+            </div>
+          ):(
+            <button onClick={onEnviar} disabled={enviando||completos.length===0}
+              style={{ width:"100%", padding:16, borderRadius:14, border:"none", background:completos.length>0?`linear-gradient(135deg,${AZUL},${AZUL_MED})`:CZ_MED, color:completos.length>0?OURO:"rgba(255,255,255,0.3)", fontSize:16, fontWeight:700, cursor:completos.length>0?"pointer":"default", boxShadow:completos.length>0?`0 4px 16px rgba(0,71,161,0.4)`:"none" }}>
+              {enviando?"Enviando...":`Enviar avaliação (${completos.length}/${lista.length})`}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ minHeight:"100vh", background:CZ_CL }}>
-      <Header titulo="Fase 1 — Avaliação"
-        direita={<button onClick={() => setView("resumo")} style={{ background:OURO, border:"none", borderRadius:10, padding:"7px 14px", color:AZUL_ESC, fontSize:12, fontWeight:700, cursor:"pointer" }}>Resumo →</button>}
+      <Header titulo="Fase 1 — Avaliação" subtitulo="Técnico · Físico · Leitura de Jogo"
+        direita={<button onClick={()=>setView("resumo")} style={{ background:`linear-gradient(135deg,${OURO},${OURO_ESC})`, border:"none", borderRadius:10, padding:"7px 14px", color:AZUL_ESC, fontSize:12, fontWeight:700, cursor:"pointer" }}>Resumo →</button>}
       />
-      <div style={{ background:AZUL, padding:"8px 1.25rem 10px" }}>
-        <div style={{ background:"rgba(255,255,255,0.15)", borderRadius:20, height:7, overflow:"hidden" }}>
-          <div style={{ background:OURO, height:"100%", width:`${pct}%`, borderRadius:20, transition:"width .4s" }} />
+      <div style={{ background:AZUL_ESC, padding:"8px 1.25rem 10px", borderBottom:`1px solid ${OURO_ESC}` }}>
+        <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:20, height:6, overflow:"hidden" }}>
+          <div style={{ background:`linear-gradient(90deg,${OURO},${OURO_ESC})`, height:"100%", width:`${pct}%`, borderRadius:20, transition:"width .4s" }} />
         </div>
-        <div style={{ color:"rgba(255,255,255,0.6)", fontSize:11, marginTop:4, textAlign:"right" }}>{preenchidos}/{lista.length} avaliados — {avaliador}</div>
+        <div style={{ color:"rgba(255,255,255,0.5)", fontSize:11, marginTop:4, textAlign:"right" }}>{preenchidos}/{lista.length} avaliados — {avaliador}</div>
       </div>
       <div style={{ padding:"0.75rem" }}>
-        {lista.map((j,idx) => {
-          const notas = avaliacoes[j] || {};
-          const nf = notaFinal(notas);
-          const nP = CRITERIOS.filter(c => notas[c.key] !== undefined && notas[c.key] !== "").length;
-          const ok = nP === 4;
+        {lista.map((j,idx)=>{
+          const av=getAv(j);
+          const ok=isCompleto(j);
+          const cad=cadastro[j]||{};
+          const gen=JOGADORES_BASE.find(x=>x.nome===j)?.genero||"M";
+          const nb=notaBaseAltura(cad.altura,gen);
+          const mob=av.fisico_mob!==undefined?Number(av.fisico_mob):null;
+          const fis=nb!==null&&mob!==null?Math.min(10,nb+mob):null;
+          const lt=leituraTotal(av.leitura_sub);
+          const nf=notaFinalV2(av.tecnico!==undefined?Number(av.tecnico):null,fis,lt);
+          const pilares = [av.tecnico!==undefined,av.fisico_mob!==undefined,lt!==null];
           return (
-            <button key={j} onClick={() => { setJogadorAtual(j); setView("jogador"); }}
-              style={{ display:"flex", alignItems:"center", width:"100%", padding:"11px 14px", marginBottom:7, background:CZ_CARD, borderRadius:14, border: ok ? `1px solid ${OURO_CL}` : "1px solid #e2e8f0", cursor:"pointer", gap:12 }}>
-              <div style={{ width:26, height:26, borderRadius:7, background: ok ? AZUL:CZ_CL, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700, color: ok ? OURO:"#64748b", flexShrink:0 }}>{idx+1}</div>
+            <button key={j} onClick={()=>{ setJogAtual(j); setView("jogador"); }}
+              style={{ display:"flex", alignItems:"center", width:"100%", padding:"11px 14px", marginBottom:7, background:CZ_CARD, borderRadius:14, border:ok?`1px solid ${OURO_ESC}`:`1px solid rgba(255,255,255,0.06)`, cursor:"pointer", gap:12 }}>
+              <div style={{ width:26, height:26, borderRadius:7, background:ok?AZUL:CZ_MED, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700, color:ok?OURO:"rgba(255,255,255,0.3)", flexShrink:0 }}>{idx+1}</div>
               <div style={{ flex:1, textAlign:"left" }}>
                 <div style={{ fontWeight:600, fontSize:13, color:BRANCO }}>{j}</div>
-                <div style={{ display:"flex", gap:4, marginTop:5 }}>
-                  {CRITERIOS.map(c => <div key={c.key} style={{ flex:1, height:4, borderRadius:2, background: notas[c.key]!==undefined && notas[c.key]!==""?notaColor(notas[c.key]):"#e2e8f0" }} />)}
+                <div style={{ display:"flex", gap:6, marginTop:5 }}>
+                  {["⚡T","🏃F","🧠L"].map((label,i)=>(
+                    <span key={i} style={{ fontSize:10, padding:"2px 7px", borderRadius:6, background:pilares[i]?"rgba(255,193,7,0.15)":"rgba(255,255,255,0.05)", color:pilares[i]?OURO_CL:"rgba(255,255,255,0.25)", fontWeight:600 }}>{label} {pilares[i]?"✓":"—"}</span>
+                  ))}
                 </div>
               </div>
-              <div style={{ minWidth:42, height:42, borderRadius:10, background: nf!==null?notaColor(nf):CZ_CL, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", border: ok?`2px solid ${OURO}`:"2px solid transparent" }}>
-                {nf!==null ? <><div style={{ fontSize:15, fontWeight:800, color:BRANCO, lineHeight:1 }}>{nf.toFixed(1)}</div><div style={{ fontSize:9, color:"rgba(255,255,255,0.4)" }}>{nP}/4</div></> : <div style={{ fontSize:11, color:"#94a3b8" }}>{nP}/4</div>}
+              <div style={{ minWidth:44, height:44, borderRadius:10, background:nf!==null?notaColor(nf):CZ_MED, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", border:ok?`2px solid ${OURO_ESC}`:"2px solid transparent" }}>
+                {nf!==null?<><div style={{ fontSize:15, fontWeight:800, color:notaColorText(nf), lineHeight:1 }}>{nf.toFixed(1)}</div><div style={{ fontSize:9, color:"rgba(255,255,255,0.4)" }}>final</div></>:<div style={{ fontSize:11, color:"rgba(255,255,255,0.3)" }}>{pilares.filter(Boolean).length}/3</div>}
               </div>
-              <div style={{ color:"#cbd5e1", fontSize:18 }}>›</div>
+              <div style={{ color:"rgba(255,255,255,0.2)", fontSize:18 }}>›</div>
             </button>
           );
         })}
@@ -443,84 +519,82 @@ function TelaAvaliacao({ avaliador, avaliacoes, setAvaliacoes, onEnviar, enviand
 }
 
 // ── Tela Seleção Fase 2 ───────────────────────────────────────────────────────
-function TelaSelecaoFase2({ onSelect, jaVotaram, onVoltar }) {
+function TelaSelecaoF2({ onSelect, jaVotaram, onVoltar }) {
   const [busca, setBusca] = useState("");
-  const filtrados = JOGADORES.filter(j => j.toLowerCase().includes(busca.toLowerCase()));
+  const filtrados = JOGADORES.filter(j=>j.toLowerCase().includes(busca.toLowerCase()));
   return (
-    <div style={{ minHeight:"100vh", background:`radial-gradient(ellipse at top, ${AZUL_MED} 0%, ${AZUL_ESC} 40%, ${PRETO} 100%)`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"2rem 1rem", position:"relative", overflow:"hidden" }}>
+    <div style={{ minHeight:"100vh", background:`radial-gradient(ellipse at top, ${AZUL_MED} 0%, ${AZUL_ESC} 40%, ${PRETO} 100%)`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"2rem 1rem" }}>
       <div style={{ marginBottom:"1.5rem", textAlign:"center" }}>
-        <img src="/VGM.jpg" alt="Logo" style={{ width:90, height:90, borderRadius:16, objectFit:"cover", boxShadow:`0 0 0 4px ${OURO}`, marginBottom:12 }} />
+        <img src="/VGM.png" alt="Logo" style={{ width:90, height:90, borderRadius:16, objectFit:"cover", boxShadow:`0 0 0 3px ${OURO_ESC}, 0 0 20px rgba(255,193,7,0.25)`, marginBottom:12 }} />
         <h1 style={{ color:OURO, fontFamily:"'Syne',sans-serif", fontSize:20, fontWeight:800, margin:0 }}>2ª Rodada</h1>
-        <p style={{ color:"rgba(255,255,255,0.6)", fontSize:13, marginTop:4 }}>Validacao das notas consolidadas</p>
+        <p style={{ color:OURO_ESC, fontSize:10, fontWeight:700, marginTop:3, letterSpacing:2 }}>VALIDAÇÃO DAS NOTAS</p>
       </div>
-      <div style={{ background:"rgba(255,255,255,0.07)", backdropFilter:"blur(10px)", borderRadius:20, padding:"1.5rem", width:"100%", maxWidth:400, border:`1px solid rgba(245,168,0,0.25)` }}>
-        <p style={{ color:"rgba(255,255,255,0.8)", fontSize:13, marginBottom:"1rem", textAlign:"center", fontWeight:500 }}>Selecione o seu nome para validar as notas</p>
-        <input placeholder="🔍 Buscar seu nome..." value={busca} onChange={e => setBusca(e.target.value)}
+      <div style={{ background:`rgba(0,31,77,0.85)`, backdropFilter:"blur(16px)", borderRadius:20, padding:"1.5rem", width:"100%", maxWidth:400, border:`1px solid ${OURO_ESC}`, boxShadow:`0 0 30px rgba(255,193,7,0.08)` }}>
+        <p style={{ color:OURO, fontSize:12, marginBottom:"1rem", textAlign:"center", fontWeight:700, letterSpacing:1 }}>SELECIONE SEU NOME</p>
+        <input placeholder="🔍 Buscar seu nome..." value={busca} onChange={e=>setBusca(e.target.value)}
           style={{ width:"100%", padding:"10px 14px", borderRadius:10, border:`1px solid ${OURO_ESC}`, background:`rgba(0,51,128,0.5)`, color:BRANCO, fontSize:14, marginBottom:10, outline:"none", boxSizing:"border-box" }} />
         <div style={{ maxHeight:300, overflowY:"auto", display:"flex", flexDirection:"column", gap:6 }}>
-          {filtrados.map(j => {
-            const jaVotou = jaVotaram.includes(j);
+          {filtrados.map(j=>{
+            const jv=jaVotaram.includes(j);
             return (
-              <button key={j} onClick={() => { if(jaVotou) alert("🔒 Voce ja enviou sua validacao. Obrigado!"); else onSelect(j); }}
-                style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 16px", borderRadius:10, border: jaVotou?`1px solid rgba(245,168,0,0.2)`:`1px solid rgba(255,255,255,0.1)`, background: jaVotou?"rgba(245,168,0,0.07)":"rgba(255,255,255,0.05)", color: jaVotou?"rgba(255,255,255,0.4)":BRANCO, fontSize:14, fontWeight:600, cursor: jaVotou?"not-allowed":"pointer", textAlign:"left" }}>
+              <button key={j} onClick={()=>{ if(jv) alert("🔒 Você já enviou sua validação!"); else onSelect(j); }}
+                style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 16px", borderRadius:10, border:jv?`1px solid rgba(212,175,55,0.15)`:`1px solid rgba(255,255,255,0.08)`, background:jv?"rgba(212,175,55,0.05)":"rgba(255,255,255,0.04)", color:jv?"rgba(255,255,255,0.3)":BRANCO, fontSize:14, fontWeight:600, cursor:jv?"not-allowed":"pointer", textAlign:"left" }}>
                 <span>{j}</span>
-                {jaVotou ? <span style={{ fontSize:11, color:OURO, background:"rgba(245,168,0,0.15)", padding:"2px 8px", borderRadius:20 }}>🔒 validado</span>
-                         : <span style={{ color:"rgba(255,255,255,0.3)", fontSize:16 }}>›</span>}
+                {jv?<span style={{ fontSize:11, color:OURO_ESC, background:"rgba(212,175,55,0.1)", padding:"2px 8px", borderRadius:20 }}>🔒 validado</span>
+                   :<span style={{ color:"rgba(255,255,255,0.2)", fontSize:16 }}>›</span>}
               </button>
             );
           })}
         </div>
       </div>
-      <button onClick={onVoltar} style={{ marginTop:16, background:"none", border:`1px solid rgba(245,168,0,0.2)`, color:"rgba(255,255,255,0.35)", fontSize:11, borderRadius:8, padding:"6px 14px", cursor:"pointer" }}>← voltar</button>
+      <button onClick={onVoltar} style={{ marginTop:16, background:"none", border:`1px solid rgba(212,175,55,0.15)`, color:"rgba(255,255,255,0.3)", fontSize:11, borderRadius:8, padding:"6px 14px", cursor:"pointer" }}>← voltar</button>
     </div>
   );
 }
 
 // ── Tela Validação Fase 2 ─────────────────────────────────────────────────────
-function TelaValidacao({ votante, consolidado, votosValidacao, jaVotouValidacao, onEnviar, enviando, onVoltar }) {
-  const [votos, setVotos] = useState(() => ({ ...(votosValidacao[votante] || {}) }));
+function TelaValidacao({ votante, consolidado, votosValidacao, jaVotou, onEnviar, enviando, onVoltar }) {
+  const [votos, setVotos] = useState(()=>({...(votosValidacao[votante]||{})}));
   const [view, setView] = useState("lista");
-  const [jogadorAtual, setJogadorAtual] = useState(null);
-  const lista = consolidado.filter(j => j.nome !== votante && j.nf !== null);
-  const preenchidos = lista.filter(j => votos[j.nome] !== undefined).length;
-  const pct = Math.round((preenchidos / lista.length) * 100);
+  const [jogAtual, setJogAtual] = useState(null);
+  const lista = consolidado.filter(j=>j.nome!==votante&&j.nf!==null);
+  const preenchidos = lista.filter(j=>votos[j.nome]!==undefined).length;
+  const pct = Math.round((preenchidos/lista.length)*100);
 
-  function setVoto(jogador, nota) { setVotos(prev => ({ ...prev, [jogador]: nota })); }
-
-  if (view === "jogador" && jogadorAtual) {
-    const jData = lista.find(j => j.nome === jogadorAtual);
+  if (view==="jogador"&&jogAtual) {
+    const jData = lista.find(j=>j.nome===jogAtual);
     if (!jData) return null;
     const nf = jData.nf;
     const opcoes = [Math.round((nf-0.5)*2)/2, nf, Math.round((nf+0.5)*2)/2];
-    const votoAtual = votos[jogadorAtual];
+    const vAtual = votos[jogAtual];
     const idx = lista.indexOf(jData);
-    const prev = idx > 0 ? lista[idx-1].nome : null;
-    const next = idx < lista.length-1 ? lista[idx+1].nome : null;
+    const prev = idx>0?lista[idx-1].nome:null;
+    const next = idx<lista.length-1?lista[idx+1].nome:null;
     return (
       <div style={{ minHeight:"100vh", background:CZ_CL }}>
-        <Header titulo={jogadorAtual} onVoltar={() => setView("lista")}
-          direita={<div style={{ background: votoAtual!==undefined?OURO:"rgba(255,255,255,0.1)", borderRadius:10, padding:"5px 14px", textAlign:"center", minWidth:52, border: votoAtual!==undefined?"none":`1px solid rgba(255,255,255,0.2)` }}>
-            <div style={{ fontSize:9, color: votoAtual!==undefined?AZUL_ESC:"rgba(255,255,255,0.5)", fontWeight:700 }}>SEU VOTO</div>
-            <div style={{ fontSize:20, color: votoAtual!==undefined?AZUL_ESC:"rgba(255,255,255,0.4)", fontWeight:800, lineHeight:1 }}>{votoAtual!==undefined?votoAtual.toFixed(1):"—"}</div>
+        <Header titulo={jogAtual} subtitulo={nivelLabel(nf)} onVoltar={()=>setView("lista")}
+          direita={<div style={{ background:vAtual!==undefined?`linear-gradient(135deg,${OURO},${OURO_ESC})`:"rgba(255,255,255,0.08)", borderRadius:10, padding:"5px 14px", textAlign:"center", minWidth:52, border:vAtual!==undefined?"none":`1px solid rgba(255,255,255,0.1)` }}>
+            <div style={{ fontSize:9, color:vAtual!==undefined?AZUL_ESC:"rgba(255,255,255,0.4)", fontWeight:700 }}>SEU VOTO</div>
+            <div style={{ fontSize:20, color:vAtual!==undefined?AZUL_ESC:"rgba(255,255,255,0.3)", fontWeight:800, lineHeight:1 }}>{vAtual!==undefined?vAtual.toFixed(1):"—"}</div>
           </div>}
         />
         <div style={{ padding:"1rem" }}>
-          <div style={{ background:CZ_CARD, borderRadius:16, padding:"1.25rem", marginBottom:12, border:`1px solid ${OURO_CL}`, textAlign:"center" }}>
-            <div style={{ fontSize:11, color:"#94a3b8", fontWeight:600, letterSpacing:1, marginBottom:6 }}>NOTA CONSOLIDADA ATUAL</div>
-            <div style={{ fontSize:48, fontWeight:800, color:AZUL, lineHeight:1 }}>{nf.toFixed(1)}</div>
-            <div style={{ fontSize:11, color:"#94a3b8", marginTop:6 }}>{nivelLabel(nf)}</div>
+          <div style={{ background:CZ_CARD, borderRadius:16, padding:"1.25rem", marginBottom:12, border:`1px solid ${OURO_ESC}`, textAlign:"center" }}>
+            <div style={{ fontSize:11, color:"rgba(255,255,255,0.4)", fontWeight:600, letterSpacing:1, marginBottom:6 }}>NOTA CONSOLIDADA ATUAL</div>
+            <div style={{ fontSize:48, fontWeight:800, color:OURO, lineHeight:1 }}>{nf.toFixed(1)}</div>
+            <div style={{ fontSize:12, color:OURO_ESC, marginTop:6, fontWeight:600 }}>{nivelLabel(nf)}</div>
           </div>
-          <div style={{ background:CZ_CARD, borderRadius:16, padding:"1.25rem", border:"1px solid #e2e8f0" }}>
-            <div style={{ fontSize:13, fontWeight:700, color:AZUL_ESC, marginBottom:14, textAlign:"center" }}>Qual nota representa melhor {jogadorAtual}?</div>
+          <div style={{ background:CZ_CARD, borderRadius:16, padding:"1.25rem", border:`1px solid rgba(255,255,255,0.08)` }}>
+            <div style={{ fontSize:13, fontWeight:700, color:BRANCO, marginBottom:14, textAlign:"center" }}>Qual nota representa melhor {jogAtual}?</div>
             <div style={{ display:"flex", gap:10 }}>
-              {opcoes.map((op,i) => {
-                const labels = ["📉 Muito alto","✅ Está certa","📈 Pouco baixo"];
-                const sel = votoAtual === op;
+              {opcoes.map((op,i)=>{
+                const labels=["📉 Muito alto","✅ Está certa","📈 Pouco baixo"];
+                const sel=vAtual===op;
                 return (
-                  <button key={op} onClick={() => setVoto(jogadorAtual, op)}
-                    style={{ flex:1, padding:"16px 8px", borderRadius:14, border: sel?`2px solid ${AZUL}`:"2px solid #e2e8f0", background: sel?AZUL:BRANCO, cursor:"pointer", textAlign:"center" }}>
-                    <div style={{ fontSize:24, fontWeight:800, color: sel?OURO:"#1e293b", marginBottom:4 }}>{op.toFixed(1)}</div>
-                    <div style={{ fontSize:10, color: sel?"rgba(255,255,255,0.7)":"#94a3b8", fontWeight:600 }}>{labels[i]}</div>
+                  <button key={op} onClick={()=>setVotos(prev=>({...prev,[jogAtual]:op}))}
+                    style={{ flex:1, padding:"16px 8px", borderRadius:14, border:sel?`2px solid ${OURO}`:`1px solid rgba(255,255,255,0.1)`, background:sel?AZUL:CZ_MED, cursor:"pointer", textAlign:"center" }}>
+                    <div style={{ fontSize:22, fontWeight:800, color:sel?OURO:BRANCO, marginBottom:4 }}>{op.toFixed(1)}</div>
+                    <div style={{ fontSize:10, color:sel?OURO_CL:"rgba(255,255,255,0.4)", fontWeight:600 }}>{labels[i]}</div>
                   </button>
                 );
               })}
@@ -528,16 +602,16 @@ function TelaValidacao({ votante, consolidado, votosValidacao, jaVotouValidacao,
           </div>
         </div>
         <div style={{ display:"flex", gap:10, padding:"0 1rem 1.5rem" }}>
-          {prev && <button onClick={() => setJogadorAtual(prev)} style={{ flex:1, padding:12, borderRadius:12, border:`1px solid #e2e8f0`, background:BRANCO, color:AZUL, fontSize:12, fontWeight:600, cursor:"pointer" }}>← {prev}</button>}
-          {next ? (
-            <button onClick={() => { if(votoAtual!==undefined) setJogadorAtual(next); }} disabled={votoAtual===undefined}
-              style={{ flex:1, padding:12, borderRadius:12, border:"none", background: votoAtual!==undefined?AZUL:"#e2e8f0", color: votoAtual!==undefined?OURO:"#94a3b8", fontSize:12, fontWeight:700, cursor: votoAtual!==undefined?"pointer":"not-allowed", opacity: votoAtual!==undefined?1:0.7 }}>
-              {votoAtual===undefined?"⚠️ Vote antes de avancar":`${next} →`}
+          {prev&&<button onClick={()=>setJogAtual(prev)} style={{ flex:1, padding:12, borderRadius:12, border:`1px solid rgba(255,255,255,0.1)`, background:CZ_CARD, color:BRANCO, fontSize:12, fontWeight:600, cursor:"pointer" }}>← {prev}</button>}
+          {next?(
+            <button onClick={()=>{ if(vAtual!==undefined) setJogAtual(next); }} disabled={vAtual===undefined}
+              style={{ flex:1, padding:12, borderRadius:12, border:"none", background:vAtual!==undefined?AZUL:CZ_MED, color:vAtual!==undefined?OURO:"rgba(255,255,255,0.3)", fontSize:12, fontWeight:700, cursor:vAtual!==undefined?"pointer":"not-allowed" }}>
+              {vAtual===undefined?"⚠️ Vote antes de avançar":`${next} →`}
             </button>
-          ) : (
-            <button onClick={() => { if(votoAtual!==undefined) setView("resumo"); }} disabled={votoAtual===undefined}
-              style={{ flex:1, padding:12, borderRadius:12, border:"none", background: votoAtual!==undefined?OURO:"#e2e8f0", color: votoAtual!==undefined?AZUL_ESC:"#94a3b8", fontSize:13, fontWeight:700, cursor: votoAtual!==undefined?"pointer":"not-allowed", opacity: votoAtual!==undefined?1:0.7 }}>
-              {votoAtual===undefined?"⚠️ Vote antes de avancar":"Ver resumo ✓"}
+          ):(
+            <button onClick={()=>{ if(vAtual!==undefined) setView("resumo"); }} disabled={vAtual===undefined}
+              style={{ flex:1, padding:12, borderRadius:12, border:"none", background:vAtual!==undefined?`linear-gradient(135deg,${OURO},${OURO_ESC})`:CZ_MED, color:vAtual!==undefined?AZUL_ESC:"rgba(255,255,255,0.3)", fontSize:13, fontWeight:700, cursor:vAtual!==undefined?"pointer":"not-allowed" }}>
+              {vAtual===undefined?"⚠️ Vote antes de avançar":"Ver resumo ✓"}
             </button>
           )}
         </div>
@@ -545,59 +619,56 @@ function TelaValidacao({ votante, consolidado, votosValidacao, jaVotouValidacao,
     );
   }
 
-  if (view === "resumo") {
-    const completos = lista.filter(j => votos[j.nome] !== undefined);
-    const incompletos = lista.filter(j => votos[j.nome] === undefined);
+  if (view==="resumo") {
+    const completos=lista.filter(j=>votos[j.nome]!==undefined);
+    const incompletos=lista.filter(j=>votos[j.nome]===undefined);
     return (
       <div style={{ minHeight:"100vh", background:CZ_CL }}>
-        <Header titulo="Resumo da validacao" onVoltar={() => setView("lista")} />
+        <Header titulo="Resumo da validação" onVoltar={()=>setView("lista")} />
         <div style={{ padding:"1rem" }}>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:14 }}>
-            <div style={{ background:CZ_CARD, borderRadius:14, padding:"1rem", border:`1px solid ${OURO_CL}`, textAlign:"center" }}>
-              <div style={{ fontSize:28, fontWeight:800, color:AZUL }}>{completos.length}</div>
-              <div style={{ fontSize:12, color:"#64748b" }}>votados</div>
+            <div style={{ background:CZ_CARD, borderRadius:14, padding:"1rem", border:`1px solid ${OURO_ESC}`, textAlign:"center" }}>
+              <div style={{ fontSize:28, fontWeight:800, color:OURO }}>{completos.length}</div>
+              <div style={{ fontSize:12, color:"rgba(255,255,255,0.5)" }}>votados</div>
             </div>
-            <div style={{ background:CZ_CARD, borderRadius:14, padding:"1rem", border:"1px solid #e2e8f0", textAlign:"center" }}>
-              <div style={{ fontSize:28, fontWeight:800, color: incompletos.length>0?"#f97316":"#22c55e" }}>{incompletos.length}</div>
-              <div style={{ fontSize:12, color:"#64748b" }}>pendentes</div>
+            <div style={{ background:CZ_CARD, borderRadius:14, padding:"1rem", border:"1px solid rgba(255,255,255,0.1)", textAlign:"center" }}>
+              <div style={{ fontSize:28, fontWeight:800, color:incompletos.length>0?"#f97316":"#22c55e" }}>{incompletos.length}</div>
+              <div style={{ fontSize:12, color:"rgba(255,255,255,0.5)" }}>pendentes</div>
             </div>
           </div>
-          {incompletos.length > 0 && (
-            <div style={{ background:"#fff7ed", borderRadius:14, padding:"1rem 1.25rem", marginBottom:14, border:"1px solid #fed7aa" }}>
-              <div style={{ fontWeight:700, fontSize:13, color:"#c2410c", marginBottom:8 }}>⚠️ Faltam votar</div>
-              {incompletos.map(j => <button key={j.nome} onClick={() => { setJogadorAtual(j.nome); setView("jogador"); }} style={{ display:"block", width:"100%", textAlign:"left", padding:"7px 0", background:"none", border:"none", borderBottom:"1px solid #fed7aa", color:"#c2410c", fontSize:13, cursor:"pointer" }}>→ {j.nome} (nota: {j.nf.toFixed(1)})</button>)}
+          {incompletos.length>0&&<div style={{ background:"rgba(251,146,60,0.1)", borderRadius:14, padding:"1rem", marginBottom:14, border:"1px solid rgba(251,146,60,0.3)" }}>
+            <div style={{ color:"#fb923c", fontWeight:700, fontSize:13, marginBottom:8 }}>⚠️ Faltam votar</div>
+            {incompletos.map(j=><button key={j.nome} onClick={()=>{ setJogAtual(j.nome); setView("jogador"); }} style={{ display:"block", width:"100%", textAlign:"left", padding:"7px 0", background:"none", border:"none", borderBottom:"1px solid rgba(251,146,60,0.2)", color:"#fb923c", fontSize:13, cursor:"pointer" }}>→ {j.nome} ({j.nf.toFixed(1)})</button>)}
+          </div>}
+          <div style={{ background:CZ_CARD, borderRadius:14, border:`1px solid rgba(255,255,255,0.08)`, overflow:"hidden", marginBottom:14 }}>
+            <div style={{ background:AZUL_ESC, padding:"10px 16px", borderBottom:`1px solid ${OURO_ESC}` }}>
+              <span style={{ color:OURO, fontSize:11, fontWeight:700 }}>SEUS VOTOS — {completos.length}/{lista.length}</span>
             </div>
-          )}
-          <div style={{ background:CZ_CARD, borderRadius:14, border:"1px solid #e2e8f0", overflow:"hidden", marginBottom:14 }}>
-            <div style={{ background:AZUL, padding:"10px 16px", display:"flex", justifyContent:"space-between" }}>
-              <span style={{ color:OURO, fontSize:11, fontWeight:700 }}>SEUS VOTOS</span>
-              <span style={{ color:"rgba(255,255,255,0.5)", fontSize:11 }}>{completos.length}/{lista.length}</span>
-            </div>
-            {completos.map((j,i) => {
-              const voto = votos[j.nome];
-              const mudou = voto !== j.nf;
+            {completos.map((j,i)=>{
+              const v=votos[j.nome];
+              const mudou=v!==j.nf;
               return (
-                <div key={j.nome} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"9px 16px", borderBottom:i<completos.length-1?"1px solid #f1f5f9":"none" }}>
-                  <span style={{ fontSize:13, fontWeight:500 }}>{j.nome}</span>
+                <div key={j.nome} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"9px 16px", borderBottom:i<completos.length-1?"1px solid rgba(255,255,255,0.05)":"none" }}>
+                  <span style={{ fontSize:13, fontWeight:500, color:BRANCO }}>{j.nome}</span>
                   <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                    <span style={{ fontSize:12, color:"#94a3b8" }}>{j.nf.toFixed(1)}</span>
-                    {mudou && <span style={{ color:"#94a3b8", fontSize:11 }}>→</span>}
-                    <span style={{ background:notaColor(voto), borderRadius:8, padding:"3px 10px", fontSize:13, fontWeight:700 }}>{voto.toFixed(1)} {mudou?(voto>j.nf?"▲":"▼"):"✓"}</span>
+                    <span style={{ fontSize:12, color:"rgba(255,255,255,0.3)" }}>{j.nf.toFixed(1)}</span>
+                    {mudou&&<span style={{ color:"rgba(255,255,255,0.3)", fontSize:11 }}>→</span>}
+                    <span style={{ background:notaColor(v), color:notaColorText(v), borderRadius:8, padding:"3px 10px", fontSize:13, fontWeight:700 }}>{v.toFixed(1)} {mudou?(v>j.nf?"▲":"▼"):"✓"}</span>
                   </div>
                 </div>
               );
             })}
           </div>
-          {jaVotouValidacao ? (
-            <div style={{ background:"#f0fdf4", border:"1px solid #86efac", borderRadius:14, padding:"1.5rem", textAlign:"center" }}>
+          {jaVotou?(
+            <div style={{ background:"rgba(34,197,94,0.1)", border:"1px solid rgba(34,197,94,0.3)", borderRadius:14, padding:"1.5rem", textAlign:"center" }}>
               <div style={{ fontSize:36, marginBottom:8 }}>✅</div>
-              <div style={{ fontWeight:700, color:"#166534", fontSize:15 }}>Validacao enviada!</div>
-              <div style={{ color:"#16a34a", fontSize:13, marginTop:4 }}>Obrigado, {votante}!</div>
-              <button onClick={onVoltar} style={{ marginTop:14, padding:"10px 24px", borderRadius:10, border:"none", background:AZUL, color:OURO, fontSize:13, fontWeight:700, cursor:"pointer" }}>Voltar ao inicio</button>
+              <div style={{ fontWeight:700, color:"#4ade80", fontSize:15 }}>Validação enviada!</div>
+              <div style={{ color:"rgba(74,222,128,0.7)", fontSize:13, marginTop:4 }}>Obrigado, {votante}!</div>
+              <button onClick={onVoltar} style={{ marginTop:14, padding:"10px 24px", borderRadius:10, border:"none", background:AZUL, color:OURO, fontSize:13, fontWeight:700, cursor:"pointer" }}>Voltar ao início</button>
             </div>
-          ) : (
-            <button onClick={() => onEnviar(votos)} disabled={enviando || completos.length===0}
-              style={{ width:"100%", padding:16, borderRadius:14, border:"none", background: completos.length>0?AZUL:"#e2e8f0", color: completos.length>0?OURO:"#94a3b8", fontSize:16, fontWeight:700, cursor: completos.length>0?"pointer":"default" }}>
+          ):(
+            <button onClick={()=>onEnviar(votos)} disabled={enviando||completos.length===0}
+              style={{ width:"100%", padding:16, borderRadius:14, border:"none", background:completos.length>0?`linear-gradient(135deg,${AZUL},${AZUL_MED})`:CZ_MED, color:completos.length>0?OURO:"rgba(255,255,255,0.3)", fontSize:16, fontWeight:700, cursor:completos.length>0?"pointer":"default" }}>
               {enviando?"Enviando...":`Confirmar votos (${completos.length}/${lista.length})`}
             </button>
           )}
@@ -608,38 +679,38 @@ function TelaValidacao({ votante, consolidado, votosValidacao, jaVotouValidacao,
 
   return (
     <div style={{ minHeight:"100vh", background:CZ_CL }}>
-      <Header titulo="Fase 2 — Validacao"
-        direita={<button onClick={() => setView("resumo")} style={{ background:OURO, border:"none", borderRadius:10, padding:"7px 14px", color:AZUL_ESC, fontSize:12, fontWeight:700, cursor:"pointer" }}>Resumo →</button>}
+      <Header titulo="Fase 2 — Validação" subtitulo="Confirme ou ajuste ±0,5 ponto"
+        direita={<button onClick={()=>setView("resumo")} style={{ background:`linear-gradient(135deg,${OURO},${OURO_ESC})`, border:"none", borderRadius:10, padding:"7px 14px", color:AZUL_ESC, fontSize:12, fontWeight:700, cursor:"pointer" }}>Resumo →</button>}
       />
-      <div style={{ background:AZUL, padding:"8px 1.25rem 10px" }}>
-        <div style={{ background:"rgba(255,255,255,0.15)", borderRadius:20, height:7, overflow:"hidden" }}>
-          <div style={{ background:OURO, height:"100%", width:`${pct}%`, borderRadius:20, transition:"width .4s" }} />
+      <div style={{ background:AZUL_ESC, padding:"8px 1.25rem 10px", borderBottom:`1px solid ${OURO_ESC}` }}>
+        <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:20, height:6, overflow:"hidden" }}>
+          <div style={{ background:`linear-gradient(90deg,${OURO},${OURO_ESC})`, height:"100%", width:`${pct}%`, borderRadius:20, transition:"width .4s" }} />
         </div>
-        <div style={{ color:"rgba(255,255,255,0.6)", fontSize:11, marginTop:4, textAlign:"right" }}>{preenchidos}/{lista.length} votados — {votante}</div>
+        <div style={{ color:"rgba(255,255,255,0.5)", fontSize:11, marginTop:4, textAlign:"right" }}>{preenchidos}/{lista.length} votados — {votante}</div>
       </div>
-      <div style={{ background:AM, padding:"10px 16px" }}>
-        <div style={{ fontSize:12, color:"#92610a", fontWeight:600, textAlign:"center" }}>Veja a nota atual e vote: manter, subir ou descer 0,5 ponto</div>
+      <div style={{ background:AM, padding:"10px 16px", borderBottom:`1px solid rgba(255,255,255,0.05)` }}>
+        <div style={{ fontSize:12, color:OURO_CL, fontWeight:600, textAlign:"center" }}>Veja a nota atual e vote: manter, subir ou descer 0,5 ponto</div>
       </div>
       <div style={{ padding:"0.75rem" }}>
-        {lista.map((j,idx) => {
-          const votado = votos[j.nome] !== undefined;
-          const voto = votos[j.nome];
-          const mudou = votado && voto !== j.nf;
+        {lista.map((j,idx)=>{
+          const votado=votos[j.nome]!==undefined;
+          const v=votos[j.nome];
+          const mudou=votado&&v!==j.nf;
           return (
-            <button key={j.nome} onClick={() => { setJogadorAtual(j.nome); setView("jogador"); }}
-              style={{ display:"flex", alignItems:"center", width:"100%", padding:"11px 14px", marginBottom:7, background:CZ_CARD, borderRadius:14, border: votado?`1px solid ${OURO_CL}`:"1px solid #e2e8f0", cursor:"pointer", gap:12 }}>
-              <div style={{ width:26, height:26, borderRadius:7, background: votado?AZUL:CZ_CL, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700, color: votado?OURO:"#64748b", flexShrink:0 }}>{idx+1}</div>
+            <button key={j.nome} onClick={()=>{ setJogAtual(j.nome); setView("jogador"); }}
+              style={{ display:"flex", alignItems:"center", width:"100%", padding:"11px 14px", marginBottom:7, background:CZ_CARD, borderRadius:14, border:votado?`1px solid ${OURO_ESC}`:`1px solid rgba(255,255,255,0.06)`, cursor:"pointer", gap:12 }}>
+              <div style={{ width:26, height:26, borderRadius:7, background:votado?AZUL:CZ_MED, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700, color:votado?OURO:"rgba(255,255,255,0.3)", flexShrink:0 }}>{idx+1}</div>
               <div style={{ flex:1, textAlign:"left" }}>
-                <div style={{ fontWeight:600, fontSize:13, color:"#1e293b" }}>{j.nome}</div>
-                <div style={{ fontSize:11, color:"#94a3b8", marginTop:2 }}>nota atual: {j.nf.toFixed(1)} — {nivelLabel(j.nf)}</div>
+                <div style={{ fontWeight:600, fontSize:13, color:BRANCO }}>{j.nome}</div>
+                <div style={{ fontSize:11, color:"rgba(255,255,255,0.4)", marginTop:2 }}>nota atual: {j.nf.toFixed(1)} — {nivelLabel(j.nf)}</div>
               </div>
-              {votado ? (
+              {votado?(
                 <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                  <span style={{ fontSize:11, color:"#94a3b8" }}>{j.nf.toFixed(1)}</span>
-                  {mudou && <span style={{ color:"#94a3b8", fontSize:11 }}>→</span>}
-                  <span style={{ background:notaColor(voto), borderRadius:8, padding:"4px 10px", fontSize:13, fontWeight:800 }}>{voto.toFixed(1)} {mudou?(voto>j.nf?"▲":"▼"):"✓"}</span>
+                  <span style={{ fontSize:11, color:"rgba(255,255,255,0.3)" }}>{j.nf.toFixed(1)}</span>
+                  {mudou&&<span style={{ color:"rgba(255,255,255,0.3)", fontSize:11 }}>→</span>}
+                  <span style={{ background:notaColor(v), color:notaColorText(v), borderRadius:8, padding:"4px 10px", fontSize:13, fontWeight:800 }}>{v.toFixed(1)} {mudou?(v>j.nf?"▲":"▼"):"✓"}</span>
                 </div>
-              ) : <span style={{ color:"#cbd5e1", fontSize:18 }}>›</span>}
+              ):<span style={{ color:"rgba(255,255,255,0.2)", fontSize:18 }}>›</span>}
             </button>
           );
         })}
@@ -649,250 +720,432 @@ function TelaValidacao({ votante, consolidado, votosValidacao, jaVotouValidacao,
 }
 
 // ── Painel Admin ──────────────────────────────────────────────────────────────
-function TelaAdmin({ dados, votosValidacao, fase2Liberada, onLiberarFase2, onVoltar }) {
+function TelaAdmin({ dados, cadastro, setCadastro, votosValidacao, fase3, setFase3, config, setConfig, onVoltar }) {
   const [tab, setTab] = useState("ranking");
-  const [jogadorSelecionado, setJogadorSelecionado] = useState(null);
+  const [jogSel, setJogSel] = useState(null);
+  const [editCad, setEditCad] = useState(null);
+  const [salvando, setSalvando] = useState(false);
+  const [nTimes, setNTimes] = useState(3);
 
-  const consolidado = JOGADORES.map(jog => {
-    const medias = {};
-    CRITERIOS.forEach(c => {
-      const arr = Object.entries(dados).filter(([av]) => av !== jog)
-        .map(([,av]) => av[jog]?.[c.key])
-        .filter(v => v !== undefined && v !== null && v !== "").map(Number);
-      if (arr.length >= 3) { const s=[...arr].sort((a,b)=>a-b).slice(1,-1); medias[c.key]=s.reduce((a,b)=>a+b,0)/s.length; }
-      else if (arr.length > 0) { medias[c.key]=arr.reduce((a,b)=>a+b,0)/arr.length; }
-      else { medias[c.key]=null; }
-    });
-    const vals = CRITERIOS.map(c => medias[c.key]).filter(v => v !== null);
-    const nf = vals.length === 4 ? Math.round(CRITERIOS.reduce((acc,c)=>acc+(medias[c.key]*c.peso),0)*2)/2 : null;
-    const qtd = Object.entries(dados).filter(([av]) => av !== jog && dados[av]?.[jog]?.tecnica !== undefined).length;
-    return { nome:jog, medias, nf, qtd };
-  }).sort((a,b) => (b.nf||0)-(a.nf||0));
+  // Calcular consolidado
+  function calcConsolidado(dadosBase) {
+    return JOGADORES.map(jog => {
+      const avs = Object.entries(dadosBase).filter(([av]) => av !== jog);
+      const tecArr = avs.map(([,av])=>av[jog]?.tecnico).filter(v=>v!==null&&v!==undefined).map(Number);
+      const mobArr = avs.map(([,av])=>av[jog]?.fisico_mob).filter(v=>v!==null&&v!==undefined).map(Number);
+      const ltArr  = avs.map(([,av])=>leituraTotal(av[jog]?.leitura_sub)).filter(v=>v!==null);
+      const media = arr => {
+        if (!arr.length) return null;
+        const s = arr.length>=3?[...arr].sort((a,b)=>a-b).slice(1,-1):arr;
+        return s.reduce((a,b)=>a+b,0)/s.length;
+      };
+      const tecMedia = media(tecArr);
+      const mobMedia = media(mobArr);
+      const ltMedia  = media(ltArr);
+      const gen = JOGADORES_BASE.find(j=>j.nome===jog)?.genero||"M";
+      const nb = notaBaseAltura(cadastro[jog]?.altura, gen);
+      const fisMedia = nb!==null&&mobMedia!==null?Math.min(10,nb+mobMedia):null;
+      const nf = notaFinalV2(tecMedia, fisMedia, ltMedia);
+      return { nome:jog, tecnico:tecMedia, fisico:fisMedia, leitura:ltMedia, nf, qtd:tecArr.length };
+    }).sort((a,b)=>(b.nf||0)-(a.nf||0));
+  }
 
+  const consolidado = calcConsolidado(dados);
   const jaAvaliaram = Object.keys(dados);
   const jaVotaramF2 = Object.keys(votosValidacao);
-  const todos39Enviaram = jaAvaliaram.length >= TOTAL_VOTANTES;
+  const todos39 = jaAvaliaram.length >= TOTAL_VOTANTES;
 
-  if (jogadorSelecionado) {
-    const votosRecebidos = Object.entries(dados)
-      .filter(([av]) => av !== jogadorSelecionado && dados[av]?.[jogadorSelecionado])
-      .map(([av, avDados]) => ({ avaliador:av, notas:avDados[jogadorSelecionado] }));
-    const mediaCrit = (crit) => {
-      const arr = votosRecebidos.map(v=>v.notas[crit]).filter(v=>v!==undefined).map(Number).sort((a,b)=>a-b);
-      if (!arr.length) return null;
-      const sem = arr.length>=3?arr.slice(1,-1):arr;
-      return sem.reduce((a,b)=>a+b,0)/sem.length;
-    };
-    const mg = notaFinal({ tecnica:mediaCrit("tecnica"),fisico:mediaCrit("fisico"),tatica:mediaCrit("tatica"),atitude:mediaCrit("atitude") });
+  // Resultado final (com fase2 e fase3)
+  const resultadoFinal = consolidado.map(j => {
+    if (!j.nf) return { ...j, notaFinal: null };
+    // Fase 3 override
+    if (fase3[j.nome]?.notaAjustada !== undefined) return { ...j, notaFinal: fase3[j.nome].notaAjustada, ajustadaF3: true, justificativa: fase3[j.nome].justificativa };
+    // Fase 2
+    const opcoes = [Math.round((j.nf-0.5)*2)/2, j.nf, Math.round((j.nf+0.5)*2)/2];
+    const contagem = { [opcoes[0]]:0, [j.nf]:0, [opcoes[2]]:0 };
+    Object.values(votosValidacao).forEach(v => { const voto=v[j.nome]; if(voto!==undefined&&contagem[voto]!==undefined) contagem[voto]++; });
+    let maxV=-1; let nfV=j.nf;
+    Object.entries(contagem).forEach(([nota,qtd]) => { if(qtd>maxV||(qtd===maxV&&Number(nota)===j.nf)){maxV=qtd;nfV=Number(nota);} });
+    return { ...j, notaFinal: nfV, votos: contagem };
+  }).sort((a,b)=>(b.notaFinal||0)-(a.notaFinal||0));
+
+  // Serpentina
+  function gerarSerpentina(nT) {
+    const rf = resultadoFinal.filter(j=>j.notaFinal!==null);
+    const homens = rf.filter(j=>JOGADORES_BASE.find(x=>x.nome===j.nome)?.genero==="M");
+    const mulheres = rf.filter(j=>JOGADORES_BASE.find(x=>x.nome===j.nome)?.genero==="F");
+    const times = Array.from({length:nT},()=>({ homens:[], mulheres:[], soma:0 }));
+    // Serpentina homens
+    let dir=1, t=0;
+    homens.forEach(j => { times[t].homens.push(j); times[t].soma+=j.notaFinal||0; t+=dir; if(t>=nT){t=nT-1;dir=-1;} else if(t<0){t=0;dir=1;} });
+    // Serpentina mulheres
+    dir=1; t=0;
+    mulheres.forEach(j => { times[t].mulheres.push(j); times[t].soma+=j.notaFinal||0; t+=dir; if(t>=nT){t=nT-1;dir=-1;} else if(t<0){t=0;dir=1;} });
+    return times;
+  }
+
+  async function salvarCadastro(nome, dados) {
+    setSalvando(true);
+    const ok = await fbPatch(`cadastro/${nome.replace(/[^a-zA-Z0-9]/g,"_")}`, dados);
+    if (ok) setCadastro(prev=>({...prev,[nome]:{...(prev[nome]||{}),...dados}}));
+    setSalvando(false);
+    return ok;
+  }
+
+  async function salvarFase3(nome, notaAjustada, justificativa) {
+    const entry = { notaAjustada, justificativa, timestamp: Date.now() };
+    const ok = await fbSet(`fase3/${nome.replace(/[^a-zA-Z0-9]/g,"_")}`, entry);
+    if (ok) setFase3(prev=>({...prev,[nome]:entry}));
+    return ok;
+  }
+
+  async function liberarFase(fase) {
+    if (!window.confirm(`Confirma liberar a Fase ${fase}?`)) return;
+    const novo = { ...config, [`fase${fase}Liberada`]: true };
+    await fbSet("config", novo);
+    setConfig(novo);
+    alert(`✅ Fase ${fase} liberada!`);
+  }
+
+  const f3Sel = jogSel ? (fase3[jogSel]||{}) : {};
+  const [novaNotaF3, setNovaNotaF3] = useState("");
+  const [justF3, setJustF3] = useState("");
+
+  // Vista: detalhe jogador
+  if (jogSel) {
+    const jData = consolidado.find(j=>j.nome===jogSel);
+    const cad = cadastro[jogSel]||{};
+    const gen = JOGADORES_BASE.find(j=>j.nome===jogSel)?.genero||"M";
+    const f3 = fase3[jogSel]||{};
+    const rf = resultadoFinal.find(j=>j.nome===jogSel);
+
     return (
       <div style={{ minHeight:"100vh", background:CZ_CL }}>
-        <Header titulo={`🔍 ${jogadorSelecionado}`} onVoltar={() => setJogadorSelecionado(null)}
-          direita={mg!==null&&<div style={{ background:OURO, borderRadius:10, padding:"5px 14px", textAlign:"center" }}>
-            <div style={{ fontSize:9, color:AZUL_ESC, fontWeight:700 }}>NOTA</div>
-            <div style={{ fontSize:20, color:AZUL_ESC, fontWeight:800, lineHeight:1 }}>{mg.toFixed(1)}</div>
+        <Header titulo={`🔍 ${jogSel}`} subtitulo={nivelLabel(rf?.notaFinal)} onVoltar={()=>setJogSel(null)}
+          direita={rf?.notaFinal&&<div style={{ background:`linear-gradient(135deg,${OURO},${OURO_ESC})`, borderRadius:10, padding:"5px 14px", textAlign:"center" }}>
+            <div style={{ fontSize:9, color:AZUL_ESC, fontWeight:700 }}>NOTA FINAL</div>
+            <div style={{ fontSize:20, color:AZUL_ESC, fontWeight:800, lineHeight:1 }}>{rf.notaFinal?.toFixed(1)}</div>
           </div>}
         />
         <div style={{ padding:"1rem" }}>
-          <div style={{ background:CZ_CARD, borderRadius:14, border:`1px solid ${OURO_CL}`, overflow:"hidden", marginBottom:12 }}>
-            <div style={{ background:AZUL, padding:"10px 16px" }}>
-              <span style={{ color:OURO, fontSize:11, fontWeight:700 }}>MEDIAS POR CRITERIO — {votosRecebidos.length} avaliacoes</span>
+          {/* Notas por pilar */}
+          <div style={{ background:CZ_CARD, borderRadius:14, border:`1px solid ${OURO_ESC}`, overflow:"hidden", marginBottom:12 }}>
+            <div style={{ background:AZUL_ESC, padding:"10px 16px", borderBottom:`1px solid ${OURO_ESC}` }}>
+              <span style={{ color:OURO, fontSize:11, fontWeight:700 }}>MÉDIAS POR PILAR — {jData?.qtd} avaliações</span>
             </div>
-            {CRITERIOS.map(c => {
-              const m = mediaCrit(c.key);
-              return (
-                <div key={c.key} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 16px", borderBottom:"1px solid #f1f5f9" }}>
-                  <span style={{ fontSize:18 }}>{c.icon}</span>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontSize:12, fontWeight:600 }}>{c.label} <span style={{ color:"#94a3b8" }}>({Math.round(c.peso*100)}%)</span></div>
-                    <div style={{ background:"#f1f5f9", borderRadius:6, height:6, marginTop:5, overflow:"hidden" }}>
-                      <div style={{ background:m!==null?AZUL:"#e2e8f0", height:"100%", width:`${m!==null?(m/10)*100:0}%`, borderRadius:6 }} />
-                    </div>
+            {[{label:"⚡ Técnico",val:jData?.tecnico,peso:"60%"},{label:"🏃 Físico",val:jData?.fisico,peso:"25%"},{label:"🧠 Leitura",val:jData?.leitura,peso:"15%"}].map(({label,val,peso})=>(
+              <div key={label} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 16px", borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontSize:12, fontWeight:600, color:BRANCO }}>{label} <span style={{ color:"rgba(255,255,255,0.35)" }}>({peso})</span></div>
+                  <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:6, height:5, marginTop:5, overflow:"hidden" }}>
+                    <div style={{ background:val!==null?`linear-gradient(90deg,${OURO},${OURO_ESC})`:"rgba(255,255,255,0.1)", height:"100%", width:`${val!==null?(val/10)*100:0}%`, borderRadius:6 }} />
                   </div>
-                  <span style={{ background:m!==null?notaColor(m):"#f1f5f9", borderRadius:8, padding:"4px 12px", fontSize:14, fontWeight:800, minWidth:44, textAlign:"center" }}>{m!==null?m.toFixed(1):"—"}</span>
                 </div>
-              );
-            })}
+                <span style={{ background:val!==null?notaColor(val):CZ_MED, color:val!==null?notaColorText(val):"#64748b", borderRadius:8, padding:"4px 12px", fontSize:14, fontWeight:800, minWidth:44, textAlign:"center" }}>{val!==null?val.toFixed(1):"—"}</span>
+              </div>
+            ))}
           </div>
-          <div style={{ background:CZ_CARD, borderRadius:14, border:"1px solid #e2e8f0", overflow:"hidden" }}>
-            <div style={{ background:AZUL, padding:"10px 16px", display:"flex", gap:6 }}>
-              <span style={{ color:OURO, fontSize:10, fontWeight:700, flex:2 }}>AVALIADOR</span>
-              {CRITERIOS.map(c=><span key={c.key} style={{ color:"rgba(255,255,255,0.5)", fontSize:11, flex:1, textAlign:"center" }}>{c.icon}</span>)}
-              <span style={{ color:OURO, fontSize:10, fontWeight:700, flex:1, textAlign:"center" }}>NOTA</span>
+
+          {/* Cadastro */}
+          <div style={{ background:CZ_CARD, borderRadius:14, border:`1px solid rgba(255,255,255,0.1)`, padding:"1rem", marginBottom:12 }}>
+            <div style={{ color:OURO, fontWeight:700, fontSize:13, marginBottom:10 }}>📋 Cadastro — {gen==="F"?"♀ Feminino":"♂ Masculino"}</div>
+            <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+              <input type="number" placeholder="Altura (cm)" defaultValue={cad.altura||""} id={`alt_${jogSel}`}
+                style={{ flex:1, padding:"8px 12px", borderRadius:8, border:`1px solid ${OURO_ESC}`, background:CZ_MED, color:BRANCO, fontSize:13, outline:"none" }} />
+              <button onClick={async()=>{
+                const alt = document.getElementById(`alt_${jogSel}`)?.value;
+                if (!alt) return;
+                const ok = await salvarCadastro(jogSel, { altura: Number(alt) });
+                if (ok) alert("✅ Altura salva!");
+              }} style={{ padding:"8px 14px", borderRadius:8, border:"none", background:OURO, color:AZUL_ESC, fontSize:12, fontWeight:700, cursor:"pointer" }}>
+                {salvando?"...":"Salvar"}
+              </button>
             </div>
-            {votosRecebidos.length===0
-              ? <div style={{ padding:16, textAlign:"center", color:"#94a3b8", fontSize:13 }}>Nenhuma avaliacao recebida ainda.</div>
-              : votosRecebidos.map((v,i) => {
-                  const nf = notaFinal(v.notas);
-                  return (
-                    <div key={v.avaliador} style={{ display:"flex", alignItems:"center", gap:6, padding:"9px 16px", borderBottom:i<votosRecebidos.length-1?"1px solid #f1f5f9":"none" }}>
-                      <span style={{ flex:2, fontSize:12, fontWeight:600 }}>{v.avaliador}</span>
-                      {CRITERIOS.map(c=><span key={c.key} style={{ flex:1, textAlign:"center", fontSize:12, fontWeight:600 }}>{v.notas[c.key]!==undefined?Number(v.notas[c.key]).toFixed(1):"—"}</span>)}
-                      <div style={{ flex:1, textAlign:"center" }}>
-                        <span style={{ background:nf!==null?notaColor(nf):"#f1f5f9", borderRadius:8, padding:"3px 8px", fontSize:12, fontWeight:800 }}>{nf!==null?nf.toFixed(1):"—"}</span>
-                      </div>
-                    </div>
-                  );
-                })
-            }
+            {cad.altura&&<div style={{ fontSize:11, color:OURO_ESC, marginTop:6 }}>Nota base atual: {notaBaseAltura(cad.altura,gen)} (altura {cad.altura}cm)</div>}
           </div>
+
+          {/* Fase 3 */}
+          {config.fase3Liberada&&<div style={{ background:CZ_CARD, borderRadius:14, border:`1px solid rgba(212,175,55,0.3)`, padding:"1rem", marginBottom:12 }}>
+            <div style={{ color:OURO, fontWeight:700, fontSize:13, marginBottom:10 }}>🎯 Fase 3 — Calibragem Admin</div>
+            {f3.notaAjustada&&<div style={{ background:"rgba(255,193,7,0.1)", borderRadius:8, padding:"8px 12px", marginBottom:10, fontSize:12, color:OURO_CL }}>
+              Nota atual F3: <strong>{f3.notaAjustada}</strong> — {f3.justificativa}
+            </div>}
+            <input type="number" step="0.5" min="0" max="10" placeholder="Nova nota (0–10)" value={novaNotaF3} onChange={e=>setNovaNotaF3(e.target.value)}
+              style={{ width:"100%", padding:"8px 12px", borderRadius:8, border:`1px solid ${OURO_ESC}`, background:CZ_MED, color:BRANCO, fontSize:13, outline:"none", boxSizing:"border-box", marginBottom:8 }} />
+            <textarea placeholder="Justificativa do ajuste..." value={justF3} onChange={e=>setJustF3(e.target.value)} rows={2}
+              style={{ width:"100%", padding:"8px 12px", borderRadius:8, border:`1px solid rgba(255,255,255,0.1)`, background:CZ_MED, color:BRANCO, fontSize:12, outline:"none", boxSizing:"border-box", resize:"none", marginBottom:8 }} />
+            <button onClick={async()=>{
+              if (!novaNotaF3||!justF3) return alert("Preencha nota e justificativa");
+              const ok = await salvarFase3(jogSel, Number(novaNotaF3), justF3);
+              if (ok) alert("✅ Ajuste F3 salvo!");
+            }} style={{ width:"100%", padding:"10px", borderRadius:10, border:"none", background:`linear-gradient(135deg,${OURO},${OURO_ESC})`, color:AZUL_ESC, fontSize:13, fontWeight:700, cursor:"pointer" }}>
+              💾 Salvar ajuste fase 3
+            </button>
+          </div>}
         </div>
       </div>
     );
   }
 
+  const times = gerarSerpentina(nTimes);
+
   return (
     <div style={{ minHeight:"100vh", background:CZ_CL }}>
       <Header titulo="Painel Administrador" onVoltar={onVoltar} />
-      <div style={{ background:AZUL, padding:"8px 1.25rem 12px", display:"flex", gap:8, flexWrap:"wrap" }}>
-        {[["ranking","🏆 Ranking"],["resultado","🎯 Resultado Final"],["participacao","👥 Participacao"]].map(([t,label]) => (
-          <button key={t} onClick={() => setTab(t)}
-            style={{ padding:"6px 14px", borderRadius:20, border: t==="resultado"&&tab!==t?`1px solid ${OURO}`:"none", background:tab===t?OURO:"rgba(255,255,255,0.1)", color:tab===t?AZUL_ESC:BRANCO, fontSize:12, fontWeight:700, cursor:"pointer" }}>
-            {label}
+      <div style={{ background:AZUL_ESC, padding:"8px 1.25rem 12px", display:"flex", gap:8, flexWrap:"wrap", borderBottom:`1px solid ${OURO_ESC}` }}>
+        {[["ranking","🏆"],["resultado","🎯"],["serpentina","⚡"],["cadastro","📋"],["participacao","👥"]].map(([t,icon])=>(
+          <button key={t} onClick={()=>setTab(t)}
+            style={{ padding:"6px 12px", borderRadius:20, border:tab===t?"none":`1px solid rgba(255,255,255,0.1)`, background:tab===t?`linear-gradient(135deg,${OURO},${OURO_ESC})`:"rgba(255,255,255,0.08)", color:tab===t?AZUL_ESC:BRANCO, fontSize:12, fontWeight:700, cursor:"pointer" }}>
+            {icon} {t.charAt(0).toUpperCase()+t.slice(1)}
           </button>
         ))}
       </div>
 
       <div style={{ padding:"1rem" }}>
-        {/* Painel de controle fase 2 */}
-        <div style={{ background:CZ_CARD, borderRadius:14, border:`1px solid ${todos39Enviaram?OURO_CL:"#e2e8f0"}`, padding:"1rem 1.25rem", marginBottom:12 }}>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:10 }}>
-            <div>
-              <div style={{ fontWeight:700, fontSize:13, color:AZUL_ESC }}>🔒 Controle da Fase 2</div>
-              <div style={{ fontSize:12, color:"#64748b", marginTop:3 }}>
-                Fase 1: {jaAvaliaram.length}/{TOTAL_VOTANTES} enviados
-                {todos39Enviaram ? " ✅ — pronto para liberar!" : ` — faltam ${TOTAL_VOTANTES-jaAvaliaram.length}`}
+        {/* Controles de fase */}
+        <div style={{ background:CZ_CARD, borderRadius:14, border:`1px solid rgba(255,255,255,0.1)`, padding:"1rem", marginBottom:12 }}>
+          <div style={{ color:OURO, fontWeight:700, fontSize:13, marginBottom:10 }}>🔒 Controle de Fases</div>
+          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+            {[{n:2,label:"Fase 2 — Validação coletiva",key:"fase2Liberada",cond:todos39},{n:3,label:"Fase 3 — Calibragem adms",key:"fase3Liberada",cond:jaVotaramF2.length>=TOTAL_VOTANTES}].map(({n,label,key,cond})=>(
+              <div key={n} style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                <div>
+                  <div style={{ fontSize:12, fontWeight:600, color:BRANCO }}>{label}</div>
+                  <div style={{ fontSize:11, color:"rgba(255,255,255,0.4)" }}>
+                    {n===2?`F1: ${jaAvaliaram.length}/${TOTAL_VOTANTES}`:`F2: ${jaVotaramF2.length}/${TOTAL_VOTANTES}`}
+                    {!cond&&` — faltam ${n===2?TOTAL_VOTANTES-jaAvaliaram.length:TOTAL_VOTANTES-jaVotaramF2.length}`}
+                  </div>
+                </div>
+                {config[key]
+                  ? <span style={{ background:"rgba(34,197,94,0.15)", color:"#4ade80", padding:"5px 12px", borderRadius:20, fontSize:11, fontWeight:700 }}>✅ Ativa</span>
+                  : <button onClick={()=>liberarFase(n)} disabled={!cond}
+                      style={{ padding:"7px 14px", borderRadius:10, border:"none", background:cond?`linear-gradient(135deg,${OURO},${OURO_ESC})`:CZ_MED, color:cond?AZUL_ESC:"rgba(255,255,255,0.3)", fontSize:12, fontWeight:700, cursor:cond?"pointer":"not-allowed" }}>
+                      {cond?"🔓 Liberar":"Aguardando..."}
+                    </button>
+                }
               </div>
-              <div style={{ fontSize:12, color:"#64748b" }}>Fase 2: {jaVotaramF2.length}/{TOTAL_VOTANTES} validaram</div>
-            </div>
-            {!fase2Liberada ? (
-              <button onClick={onLiberarFase2} disabled={!todos39Enviaram}
-                style={{ padding:"10px 18px", borderRadius:12, border:"none", background: todos39Enviaram?OURO:"#e2e8f0", color: todos39Enviaram?AZUL_ESC:"#94a3b8", fontSize:13, fontWeight:700, cursor: todos39Enviaram?"pointer":"not-allowed" }}>
-                {todos39Enviaram?"🔓 Liberar Fase 2":"Aguardando..."}
-              </button>
-            ) : (
-              <span style={{ background:"#f0fdf4", color:"#166534", padding:"8px 14px", borderRadius:12, fontSize:12, fontWeight:700 }}>✅ Fase 2 ativa</span>
-            )}
+            ))}
           </div>
         </div>
 
-        {tab==="ranking" && (
+        {tab==="ranking"&&(
           <>
-            <button onClick={() => exportarCSV(consolidado, dados, votosValidacao)}
-              style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:"12px", borderRadius:12, border:`1px solid ${OURO}`, background:`rgba(245,168,0,0.08)`, color:OURO, fontSize:13, fontWeight:700, cursor:"pointer", marginBottom:12 }}>
-              📥 Exportar planilha completa (.csv)
+            <button onClick={()=>{
+              const sep=";"; const linhas=[];
+              linhas.push("RANKING — VOLEI GUIOMAR DE MELO V2");
+              linhas.push(`${new Date().toLocaleDateString("pt-BR")}`);
+              linhas.push("");
+              linhas.push(["Pos","Jogador","Nivel","Tecnico","Fisico","Leitura","NOTA FINAL","Avaliacoes"].join(sep));
+              consolidado.forEach((j,i)=>linhas.push([i+1,j.nome,nivelLabel(j.nf||0),j.tecnico?.toFixed(1)||"—",j.fisico?.toFixed(1)||"—",j.leitura?.toFixed(1)||"—",j.nf?.toFixed(1)||"—",j.qtd].join(sep)));
+              const csv="\uFEFF"+linhas.join("\n");
+              const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+              const url=URL.createObjectURL(blob); const a=document.createElement("a");
+              a.href=url; a.download=`VGM_Ranking_${new Date().toLocaleDateString("pt-BR").replace(/\//g,"-")}.csv`;
+              a.click(); URL.revokeObjectURL(url);
+            }} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:"12px", borderRadius:12, border:`1px solid ${OURO}`, background:`rgba(255,193,7,0.08)`, color:OURO, fontSize:13, fontWeight:700, cursor:"pointer", marginBottom:12 }}>
+              📥 Exportar ranking (.csv)
             </button>
-            <p style={{ fontSize:11, color:"#94a3b8", marginBottom:10, textAlign:"center" }}>Toque em um jogador para ver todas as avaliacoes recebidas</p>
-            <div style={{ background:CZ_CARD, borderRadius:14, border:"1px solid #e2e8f0", overflow:"hidden", marginBottom:10 }}>
-              <div style={{ background:AZUL, padding:"10px 16px", display:"flex", gap:6 }}>
+            <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", marginBottom:10, textAlign:"center" }}>Toque em um jogador para ver detalhes e editar cadastro</p>
+            <div style={{ background:CZ_CARD, borderRadius:14, border:`1px solid rgba(255,255,255,0.08)`, overflow:"hidden" }}>
+              <div style={{ background:AZUL_ESC, padding:"10px 16px", display:"flex", gap:6, borderBottom:`1px solid ${OURO_ESC}` }}>
+                <span style={{ color:OURO, fontSize:10, fontWeight:700, width:20 }}>#</span>
                 <span style={{ color:OURO, fontSize:10, fontWeight:700, flex:2 }}>JOGADOR</span>
-                {CRITERIOS.map(c=><span key={c.key} style={{ color:"rgba(255,255,255,0.5)", fontSize:11, flex:1, textAlign:"center" }}>{c.icon}</span>)}
+                <span style={{ color:"rgba(255,255,255,0.4)", fontSize:10, flex:1, textAlign:"center" }}>⚡T</span>
+                <span style={{ color:"rgba(255,255,255,0.4)", fontSize:10, flex:1, textAlign:"center" }}>🏃F</span>
+                <span style={{ color:"rgba(255,255,255,0.4)", fontSize:10, flex:1, textAlign:"center" }}>🧠L</span>
                 <span style={{ color:OURO, fontSize:10, fontWeight:700, flex:1, textAlign:"center" }}>NOTA</span>
               </div>
-              {consolidado.map((j,i) => (
-                <div key={j.nome} onClick={() => setJogadorSelecionado(j.nome)}
-                  style={{ display:"flex", alignItems:"center", gap:6, padding:"10px 16px", borderBottom:i<consolidado.length-1?"1px solid #f1f5f9":"none", background:i<3?`rgba(26,58,143,0.04)`:"transparent", cursor:"pointer" }}>
-                  <span style={{ fontSize:11, fontWeight:700, color:i<3?AZUL:"#94a3b8", width:20 }}>{i+1}</span>
-                  <span style={{ flex:2, fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{j.nome}</span>
-                  {CRITERIOS.map(c=><span key={c.key} style={{ flex:1, textAlign:"center", fontSize:12, fontWeight:600, color:j.medias[c.key]!==null?"#1e293b":"#e2e8f0" }}>{j.medias[c.key]!==null?j.medias[c.key].toFixed(1):"—"}</span>)}
+              {consolidado.map((j,i)=>(
+                <div key={j.nome} onClick={()=>setJogSel(j.nome)}
+                  style={{ display:"flex", alignItems:"center", gap:6, padding:"10px 16px", borderBottom:i<consolidado.length-1?"1px solid rgba(255,255,255,0.04)":"none", background:i<3?"rgba(255,193,7,0.04)":"transparent", cursor:"pointer" }}>
+                  <span style={{ fontSize:11, fontWeight:700, color:i<3?OURO:"rgba(255,255,255,0.3)", width:20 }}>{i+1}</span>
+                  <span style={{ flex:2, fontSize:12, fontWeight:600, color:BRANCO, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{j.nome}</span>
+                  {[j.tecnico,j.fisico,j.leitura].map((v,k)=><span key={k} style={{ flex:1, textAlign:"center", fontSize:12, fontWeight:600, color:v!==null?notaColorText(v):"rgba(255,255,255,0.15)" }}>{v!==null?v.toFixed(1):"—"}</span>)}
                   <div style={{ flex:1, textAlign:"center" }}>
-                    <span style={{ background:j.nf!==null?notaColor(j.nf):"#f1f5f9", borderRadius:8, padding:"3px 8px", fontSize:13, fontWeight:800 }}>{j.nf!==null?j.nf.toFixed(1):"—"}</span>
+                    <span style={{ background:j.nf!==null?notaColor(j.nf):CZ_MED, color:j.nf!==null?notaColorText(j.nf):"rgba(255,255,255,0.3)", borderRadius:8, padding:"3px 8px", fontSize:13, fontWeight:800 }}>{j.nf!==null?j.nf.toFixed(1):"—"}</span>
                   </div>
-                  <span style={{ color:"#cbd5e1", fontSize:14 }}>›</span>
+                  <span style={{ color:"rgba(255,255,255,0.15)", fontSize:14 }}>›</span>
                 </div>
               ))}
             </div>
           </>
         )}
 
-        {tab==="resultado" && (() => {
-          const resultadoFinal = [...consolidado].map(j => {
-            if (!j.nf) return { ...j, notaFinalValidada:null, totalVotos:0, votos:{} };
-            const opcoes = [Math.round((j.nf-0.5)*2)/2, j.nf, Math.round((j.nf+0.5)*2)/2];
-            const votos = { [opcoes[0]]:0,[j.nf]:0,[opcoes[2]]:0 };
-            Object.values(votosValidacao).forEach(v => { const voto=v[j.nome]; if(voto!==undefined&&votos[voto]!==undefined) votos[voto]++; });
-            const totalVotos = Object.values(votos).reduce((a,b)=>a+b,0);
-            let maxV=-1; let notaFinalV=j.nf;
-            Object.entries(votos).forEach(([nota,qtd]) => { if(qtd>maxV||(qtd===maxV&&Number(nota)===j.nf)){maxV=qtd;notaFinalV=Number(nota);} });
-            return { ...j, notaFinalValidada:notaFinalV, totalVotos, votos };
-          }).sort((a,b)=>(b.notaFinalValidada||0)-(a.notaFinalValidada||0));
-
-          return (
-            <div>
-              <div style={{ background:CZ_CARD, borderRadius:14, border:`1px solid ${OURO_CL}`, padding:"1rem 1.25rem", marginBottom:12, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                <div>
-                  <div style={{ fontSize:11, color:"#94a3b8", fontWeight:600 }}>PARTICIPACAO FASE 2</div>
-                  <div style={{ fontSize:22, fontWeight:800, color:AZUL }}>{jaVotaramF2.length}<span style={{ fontSize:13, color:"#94a3b8", fontWeight:400 }}>/{TOTAL_VOTANTES}</span></div>
-                </div>
-                <button onClick={() => {
-                  const sep=";"; const linhas=[];
-                  linhas.push("RESULTADO FINAL — VOLEI GUIOMAR DE MELO");
-                  linhas.push(`Exportado em: ${new Date().toLocaleDateString("pt-BR")}`);
-                  linhas.push("");
-                  linhas.push("Pos"+sep+"Jogador"+sep+"Nivel"+sep+"Nota Fase 1"+sep+"Nota Final"+sep+"Votos"+sep+"Status");
-                  resultadoFinal.forEach((j,i)=>{
-                    const status=j.notaFinalValidada>j.nf?"Subiu":j.notaFinalValidada<j.nf?"Desceu":"Mantida";
-                    linhas.push([i+1,j.nome,nivelLabel(j.notaFinalValidada||0),j.nf?.toFixed(1)||"—",j.notaFinalValidada?.toFixed(1)||"—",j.totalVotos,status].join(sep));
-                  });
-                  linhas.push(""); linhas.push("NOTAS PARA O TEAMS GENERATION");
-                  linhas.push("Jogador"+sep+"Posicao"+sep+"Nota 0-10"+sep+"Nivel");
-                  resultadoFinal.forEach(j=>linhas.push([j.nome,"",j.notaFinalValidada?.toFixed(1)||"—",nivelLabel(j.notaFinalValidada||0)].join(sep)));
-                  const csv="\uFEFF"+linhas.join("\n");
-                  const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
-                  const url=URL.createObjectURL(blob); const a=document.createElement("a");
-                  a.href=url; a.download=`VGM_Resultado_Final_${new Date().toLocaleDateString("pt-BR").replace(/\//g,"-")}.csv`;
-                  a.click(); URL.revokeObjectURL(url);
-                }} style={{ padding:"8px 14px", borderRadius:10, border:`1px solid ${OURO}`, background:`rgba(245,168,0,0.1)`, color:OURO, fontSize:12, fontWeight:700, cursor:"pointer" }}>
-                  📥 Exportar
-                </button>
+        {tab==="resultado"&&(
+          <div>
+            <button onClick={()=>{
+              const sep=";"; const linhas=[];
+              linhas.push("RESULTADO FINAL — VOLEI GUIOMAR DE MELO V2");
+              linhas.push(`${new Date().toLocaleDateString("pt-BR")}`);
+              linhas.push("");
+              linhas.push(["Pos","Jogador","Genero","Nivel","Nota F1","Nota Final","Status","Justificativa F3"].join(sep));
+              resultadoFinal.forEach((j,i)=>{
+                const gen=JOGADORES_BASE.find(x=>x.nome===j.nome)?.genero||"?";
+                const status=j.ajustadaF3?"Ajuste F3":j.notaFinal!==j.nf?"Alterado F2":"Mantido";
+                linhas.push([i+1,j.nome,gen,nivelLabel(j.notaFinal||0),j.nf?.toFixed(1)||"—",j.notaFinal?.toFixed(1)||"—",status,j.justificativa||""].join(sep));
+              });
+              linhas.push(""); linhas.push("NOTAS PARA O TEAMS GENERATION");
+              linhas.push(["Jogador","Genero","Posicao","Nota 0-10","Nivel"].join(sep));
+              resultadoFinal.forEach(j=>{
+                const gen=JOGADORES_BASE.find(x=>x.nome===j.nome)?.genero||"?";
+                linhas.push([j.nome,gen,"",j.notaFinal?.toFixed(1)||"—",nivelLabel(j.notaFinal||0)].join(sep));
+              });
+              const csv="\uFEFF"+linhas.join("\n");
+              const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+              const url=URL.createObjectURL(blob); const a=document.createElement("a");
+              a.href=url; a.download=`VGM_Resultado_Final_${new Date().toLocaleDateString("pt-BR").replace(/\//g,"-")}.csv`;
+              a.click(); URL.revokeObjectURL(url);
+            }} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:"12px", borderRadius:12, border:`1px solid ${OURO}`, background:`rgba(255,193,7,0.08)`, color:OURO, fontSize:13, fontWeight:700, cursor:"pointer", marginBottom:12 }}>
+              📥 Exportar resultado final (.csv)
+            </button>
+            <div style={{ background:CZ_CARD, borderRadius:14, border:`1px solid rgba(255,255,255,0.08)`, overflow:"hidden" }}>
+              <div style={{ background:AZUL_ESC, padding:"10px 16px", display:"flex", gap:6, borderBottom:`1px solid ${OURO_ESC}` }}>
+                <span style={{ color:OURO, fontSize:10, fontWeight:700, width:20 }}>#</span>
+                <span style={{ color:OURO, fontSize:10, fontWeight:700, flex:2 }}>JOGADOR</span>
+                <span style={{ color:"rgba(255,255,255,0.4)", fontSize:10, flex:1, textAlign:"center" }}>F1</span>
+                <span style={{ color:OURO, fontSize:10, fontWeight:700, flex:1, textAlign:"center" }}>FINAL</span>
+                <span style={{ color:"rgba(255,255,255,0.4)", fontSize:10, flex:1, textAlign:"center" }}>STATUS</span>
               </div>
-              <div style={{ background:CZ_CARD, borderRadius:14, border:"1px solid #e2e8f0", overflow:"hidden", marginBottom:10 }}>
-                <div style={{ background:AZUL, padding:"10px 16px", display:"flex", gap:6 }}>
-                  <span style={{ color:OURO, fontSize:10, fontWeight:700, width:20 }}>#</span>
-                  <span style={{ color:OURO, fontSize:10, fontWeight:700, flex:2 }}>JOGADOR</span>
-                  <span style={{ color:"rgba(255,255,255,0.5)", fontSize:10, flex:1, textAlign:"center" }}>F1</span>
-                  <span style={{ color:"rgba(255,255,255,0.5)", fontSize:10, flex:1, textAlign:"center" }}>VOTOS</span>
-                  <span style={{ color:OURO, fontSize:10, fontWeight:700, flex:1, textAlign:"center" }}>FINAL</span>
-                </div>
-                {resultadoFinal.map((j,i) => {
-                  const mudou = j.notaFinalValidada !== j.nf;
-                  const subiu = j.notaFinalValidada > j.nf;
-                  return (
-                    <div key={j.nome} style={{ display:"flex", alignItems:"center", gap:6, padding:"10px 16px", borderBottom:i<resultadoFinal.length-1?"1px solid #f1f5f9":"none", background:i<3?`rgba(26,58,143,0.03)`:"transparent" }}>
-                      <span style={{ fontSize:11, fontWeight:700, color:i<3?AZUL:"#94a3b8", width:20 }}>{i+1}</span>
-                      <div style={{ flex:2 }}>
-                        <div style={{ fontSize:12, fontWeight:600 }}>{j.nome}</div>
-                        {j.totalVotos>0&&<div style={{ fontSize:10, color:"#94a3b8", marginTop:2 }}>{Object.entries(j.votos).map(([nota,qtd])=>qtd>0?`${Number(nota).toFixed(1)}→${qtd}v`:null).filter(Boolean).join("  ")}</div>}
-                      </div>
-                      <span style={{ flex:1, textAlign:"center", fontSize:12, color:"#94a3b8" }}>{j.nf?.toFixed(1)||"—"}</span>
-                      <span style={{ flex:1, textAlign:"center", fontSize:11, color:"#94a3b8" }}>{j.totalVotos>0?`${j.totalVotos}v`:"—"}</span>
-                      <div style={{ flex:1, textAlign:"center" }}>
-                        <span style={{ background:notaColor(j.notaFinalValidada), borderRadius:8, padding:"3px 8px", fontSize:13, fontWeight:800, border:mudou?`2px solid ${subiu?"#22c55e":"#f97316"}`:"none" }}>
-                          {j.notaFinalValidada?.toFixed(1)||"—"} {mudou?(subiu?"▲":"▼"):""}
-                        </span>
+              {resultadoFinal.map((j,i)=>{
+                const mudou=j.notaFinal!==j.nf;
+                const subiu=j.notaFinal>j.nf;
+                return (
+                  <div key={j.nome} style={{ display:"flex", alignItems:"center", gap:6, padding:"10px 16px", borderBottom:i<resultadoFinal.length-1?"1px solid rgba(255,255,255,0.04)":"none", background:i<3?"rgba(255,193,7,0.03)":"transparent" }}>
+                    <span style={{ fontSize:11, fontWeight:700, color:i<3?OURO:"rgba(255,255,255,0.3)", width:20 }}>{i+1}</span>
+                    <div style={{ flex:2 }}>
+                      <div style={{ fontSize:12, fontWeight:600, color:BRANCO }}>{j.nome}</div>
+                      <div style={{ fontSize:10, color:"rgba(255,255,255,0.3)" }}>{nivelLabel(j.notaFinal)}</div>
+                    </div>
+                    <span style={{ flex:1, textAlign:"center", fontSize:12, color:"rgba(255,255,255,0.4)" }}>{j.nf?.toFixed(1)||"—"}</span>
+                    <div style={{ flex:1, textAlign:"center" }}>
+                      <span style={{ background:j.notaFinal?notaColor(j.notaFinal):CZ_MED, color:j.notaFinal?notaColorText(j.notaFinal):"rgba(255,255,255,0.3)", borderRadius:8, padding:"3px 8px", fontSize:13, fontWeight:800, border:mudou?`2px solid ${subiu?"#22c55e":"#f97316"}`:"none" }}>
+                        {j.notaFinal?.toFixed(1)||"—"} {mudou?(subiu?"▲":"▼"):""}
+                      </span>
+                    </div>
+                    <span style={{ flex:1, textAlign:"center", fontSize:10, color:j.ajustadaF3?OURO:mudou?"#86efac":"rgba(255,255,255,0.25)" }}>
+                      {j.ajustadaF3?"⚙F3":mudou?"✦F2":"—"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {tab==="serpentina"&&(
+          <div>
+            <div style={{ background:CZ_CARD, borderRadius:14, border:`1px solid ${OURO_ESC}`, padding:"1rem", marginBottom:12 }}>
+              <div style={{ color:OURO, fontWeight:700, fontSize:13, marginBottom:10 }}>⚡ Gerar times por serpentina</div>
+              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
+                <span style={{ color:BRANCO, fontSize:13 }}>Número de times:</span>
+                {[2,3,4,5,6].map(n=>(
+                  <button key={n} onClick={()=>setNTimes(n)}
+                    style={{ width:36, height:36, borderRadius:8, border:nTimes===n?`2px solid ${OURO}`:`1px solid rgba(255,255,255,0.1)`, background:nTimes===n?AZUL:CZ_MED, color:nTimes===n?OURO:BRANCO, fontSize:13, fontWeight:700, cursor:"pointer" }}>
+                    {n}
+                  </button>
+                ))}
+              </div>
+              <div style={{ color:"rgba(255,255,255,0.4)", fontSize:11 }}>
+                {resultadoFinal.filter(j=>j.notaFinal!==null).length} jogadores disponíveis ·{" "}
+                {JOGADORES_BASE.filter(j=>j.genero==="M").length} ♂ · {JOGADORES_BASE.filter(j=>j.genero==="F").length} ♀
+              </div>
+            </div>
+            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+              {times.map((time,i)=>{
+                const mediaTime = time.soma/(time.homens.length+time.mulheres.length)||0;
+                return (
+                  <div key={i} style={{ background:CZ_CARD, borderRadius:14, border:`1px solid ${OURO_ESC}`, overflow:"hidden" }}>
+                    <div style={{ background:`linear-gradient(135deg,${AZUL_ESC},${AZUL_MED})`, padding:"10px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", borderBottom:`1px solid ${OURO_ESC}` }}>
+                      <span style={{ color:OURO, fontWeight:800, fontSize:14 }}>TIME {String.fromCharCode(65+i)}</span>
+                      <div style={{ textAlign:"right" }}>
+                        <div style={{ color:BRANCO, fontSize:12, fontWeight:700 }}>Média: {mediaTime.toFixed(2)}</div>
+                        <div style={{ color:"rgba(255,255,255,0.4)", fontSize:10 }}>{time.homens.length+time.mulheres.length} jogadores · Soma: {time.soma.toFixed(1)}</div>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+                    <div style={{ padding:"8px 0" }}>
+                      {[...time.homens,...time.mulheres].sort((a,b)=>(b.notaFinal||0)-(a.notaFinal||0)).map((j,k)=>{
+                        const gen=JOGADORES_BASE.find(x=>x.nome===j.nome)?.genero;
+                        return (
+                          <div key={j.nome} style={{ display:"flex", alignItems:"center", gap:10, padding:"7px 16px", borderBottom:k<(time.homens.length+time.mulheres.length-1)?"1px solid rgba(255,255,255,0.04)":"none" }}>
+                            <span style={{ fontSize:12, color:gen==="F"?"#f9a8d4":"#93c5fd" }}>{gen==="F"?"♀":"♂"}</span>
+                            <span style={{ flex:1, fontSize:13, fontWeight:500, color:BRANCO }}>{j.nome}</span>
+                            <span style={{ background:notaColor(j.notaFinal), color:notaColorText(j.notaFinal), borderRadius:8, padding:"3px 10px", fontSize:13, fontWeight:700 }}>{j.notaFinal?.toFixed(1)}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          );
-        })()}
+            {/* Verificação de equilíbrio */}
+            <div style={{ background:CZ_CARD, borderRadius:14, border:`1px solid rgba(255,255,255,0.1)`, padding:"1rem", marginTop:12 }}>
+              <div style={{ color:OURO, fontWeight:700, fontSize:12, marginBottom:8 }}>📊 Verificação de equilíbrio</div>
+              {(() => {
+                const medias = times.map(t=>t.soma/(t.homens.length+t.mulheres.length)||0);
+                const maxDif = Math.max(...medias)-Math.min(...medias);
+                const ok = maxDif<=1.0;
+                return (
+                  <div>
+                    {times.map((t,i)=><div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"4px 0", borderBottom:i<times.length-1?"1px solid rgba(255,255,255,0.05)":"none" }}>
+                      <span style={{ color:"rgba(255,255,255,0.6)", fontSize:12 }}>Time {String.fromCharCode(65+i)}</span>
+                      <span style={{ color:OURO, fontSize:12, fontWeight:700 }}>{(t.soma/(t.homens.length+t.mulheres.length)||0).toFixed(2)}</span>
+                    </div>)}
+                    <div style={{ marginTop:8, padding:"8px 10px", borderRadius:8, background:ok?"rgba(34,197,94,0.1)":"rgba(251,146,60,0.1)", border:`1px solid ${ok?"rgba(34,197,94,0.3)":"rgba(251,146,60,0.3)"}` }}>
+                      <span style={{ fontSize:12, fontWeight:700, color:ok?"#4ade80":"#fb923c" }}>
+                        {ok?"✅ Times equilibrados":"⚠️ Diferença > 1,0 ponto — considere ajuste manual"} (Δ {maxDif.toFixed(2)})
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        )}
 
-        {tab==="participacao" && (
-          <div style={{ background:CZ_CARD, borderRadius:14, border:"1px solid #e2e8f0", overflow:"hidden" }}>
-            <div style={{ background:AZUL, padding:"10px 16px", display:"flex", justifyContent:"space-between" }}>
-              <span style={{ color:OURO, fontSize:11, fontWeight:700 }}>FASE 1</span>
-              <span style={{ color:"rgba(255,255,255,0.5)", fontSize:11 }}>{jaAvaliaram.length}/{TOTAL_VOTANTES}</span>
+        {tab==="cadastro"&&(
+          <div>
+            <p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", marginBottom:10, textAlign:"center" }}>Clique em um jogador no Ranking para editar a altura individualmente</p>
+            <div style={{ background:CZ_CARD, borderRadius:14, border:`1px solid rgba(255,255,255,0.08)`, overflow:"hidden" }}>
+              <div style={{ background:AZUL_ESC, padding:"10px 16px", display:"flex", gap:6, borderBottom:`1px solid ${OURO_ESC}` }}>
+                <span style={{ color:OURO, fontSize:10, fontWeight:700, flex:2 }}>JOGADOR</span>
+                <span style={{ color:"rgba(255,255,255,0.4)", fontSize:10, flex:1, textAlign:"center" }}>GÊN</span>
+                <span style={{ color:"rgba(255,255,255,0.4)", fontSize:10, flex:1, textAlign:"center" }}>ALTURA</span>
+                <span style={{ color:"rgba(255,255,255,0.4)", fontSize:10, flex:1, textAlign:"center" }}>BASE</span>
+              </div>
+              {JOGADORES.map((j,i)=>{
+                const cad=cadastro[j]||{};
+                const gen=JOGADORES_BASE.find(x=>x.nome===j)?.genero||"M";
+                const nb=notaBaseAltura(cad.altura,gen);
+                return (
+                  <div key={j} onClick={()=>setJogSel(j)} style={{ display:"flex", alignItems:"center", gap:6, padding:"9px 16px", borderBottom:i<JOGADORES.length-1?"1px solid rgba(255,255,255,0.04)":"none", cursor:"pointer" }}>
+                    <span style={{ flex:2, fontSize:12, fontWeight:600, color:BRANCO }}>{j}</span>
+                    <span style={{ flex:1, textAlign:"center", fontSize:12, color:gen==="F"?"#f9a8d4":"#93c5fd" }}>{gen==="F"?"♀":"♂"}</span>
+                    <span style={{ flex:1, textAlign:"center", fontSize:12, color:cad.altura?OURO_CL:"rgba(255,255,255,0.2)" }}>{cad.altura?`${cad.altura}cm`:"—"}</span>
+                    <span style={{ flex:1, textAlign:"center", fontSize:12, color:nb!==null?OURO:"rgba(255,255,255,0.2)" }}>{nb!==null?nb:"—"}</span>
+                  </div>
+                );
+              })}
             </div>
-            {JOGADORES.map((j,i) => {
-              const enviou = jaAvaliaram.includes(j);
-              const validou = jaVotaramF2.includes(j);
+          </div>
+        )}
+
+        {tab==="participacao"&&(
+          <div style={{ background:CZ_CARD, borderRadius:14, border:`1px solid rgba(255,255,255,0.08)`, overflow:"hidden" }}>
+            <div style={{ background:AZUL_ESC, padding:"10px 16px", display:"flex", justifyContent:"space-between", borderBottom:`1px solid ${OURO_ESC}` }}>
+              <span style={{ color:OURO, fontSize:11, fontWeight:700 }}>PARTICIPAÇÃO</span>
+              <span style={{ color:"rgba(255,255,255,0.4)", fontSize:11 }}>F1: {jaAvaliaram.length} · F2: {jaVotaramF2.length} · Total: {TOTAL_VOTANTES}</span>
+            </div>
+            {JOGADORES.map((j,i)=>{
+              const f1=jaAvaliaram.includes(j);
+              const f2=jaVotaramF2.includes(j);
+              const f3ok=!!fase3[j];
               return (
-                <div key={j} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 16px", borderBottom:i<JOGADORES.length-1?"1px solid #f1f5f9":"none" }}>
-                  <span style={{ fontSize:13, fontWeight:500 }}>{j}</span>
-                  <div style={{ display:"flex", gap:6 }}>
-                    <span style={{ fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:20, background:enviou?"#f0fdf4":"#fef2f2", color:enviou?"#166534":"#dc2626" }}>{enviou?"F1 ✓":"F1 —"}</span>
-                    {fase2Liberada && <span style={{ fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:20, background:validou?"#f0fdf4":"#fef2f2", color:validou?"#166534":"#dc2626" }}>{validou?"F2 ✓":"F2 —"}</span>}
+                <div key={j} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 16px", borderBottom:i<JOGADORES.length-1?"1px solid rgba(255,255,255,0.04)":"none" }}>
+                  <span style={{ fontSize:13, fontWeight:500, color:BRANCO }}>{j}</span>
+                  <div style={{ display:"flex", gap:5 }}>
+                    {[{ok:f1,label:"F1"},{ok:f2,label:"F2"},{ok:f3ok,label:"F3",cond:config.fase3Liberada}].filter(x=>x.cond!==false).map(({ok,label})=>(
+                      <span key={label} style={{ fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:12, background:ok?"rgba(34,197,94,0.15)":"rgba(239,68,68,0.15)", color:ok?"#4ade80":"#f87171" }}>{label} {ok?"✓":"—"}</span>
+                    ))}
                   </div>
                 </div>
               );
@@ -914,119 +1167,106 @@ export default function App() {
   const [jaEnviou, setJaEnviou] = useState(false);
   const [jaAvaliaram, setJaAvaliaram] = useState([]);
   const [votosValidacao, setVotosValidacao] = useState({});
-  const [jaVotaramValidacao, setJaVotaramValidacao] = useState([]);
-  const [jaVotouValidacao, setJaVotouValidacao] = useState(false);
-  const [enviandoValidacao, setEnviandoValidacao] = useState(false);
-  const [fase2Liberada, setFase2Liberada] = useState(false);
+  const [jaVotaramF2, setJaVotaramF2] = useState([]);
+  const [jaVotouF2, setJaVotouF2] = useState(false);
+  const [enviandoF2, setEnviandoF2] = useState(false);
+  const [fase3, setFase3] = useState({});
+  const [config, setConfig] = useState({ fase2Liberada:false, fase3Liberada:false });
+  const [cadastro, setCadastro] = useState({});
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
-    Promise.all([carregarAvaliacoes(), carregarValidacao(), carregarConfig()]).then(([dados, validacao, config]) => {
-      setTodasRespostas(dados);
-      setJaAvaliaram(Object.keys(dados));
+    carregarTudo().then(({ avaliacoes, validacao, fase3, config, cadastro }) => {
+      setTodasRespostas(avaliacoes);
+      setJaAvaliaram(Object.keys(avaliacoes));
       setVotosValidacao(validacao);
-      setJaVotaramValidacao(Object.keys(validacao));
-      setFase2Liberada(config.fase2Liberada || false);
+      setJaVotaramF2(Object.keys(validacao));
+      setFase3(fase3);
+      setConfig(config);
+      setCadastro(cadastro);
       setCarregando(false);
     });
   }, []);
 
-  async function handleEnviarFase1() {
+  async function handleEnviarF1() {
     setEnviando(true);
-    const ok = await salvarAvaliacao(avaliador, avaliacoes);
+    const key = avaliador.replace(/[^a-zA-Z0-9]/g,"_");
+    const ok = await fbSet(`avaliacoes/${key}`, { avaliador, dados: avaliacoes, timestamp: Date.now() });
     if (ok) {
-      const atualizadas = { ...todasRespostas, [avaliador]: avaliacoes };
-      setTodasRespostas(atualizadas);
-      setJaAvaliaram(Object.keys(atualizadas));
-      setJaEnviou(true);
-    } else { alert("Erro ao salvar. Tente novamente."); }
+      const ats = { ...todasRespostas, [avaliador]: avaliacoes };
+      setTodasRespostas(ats); setJaAvaliaram(Object.keys(ats)); setJaEnviou(true);
+    } else alert("Erro ao salvar. Tente novamente.");
     setEnviando(false);
   }
 
-  async function handleEnviarValidacao(votos) {
-    setEnviandoValidacao(true);
-    const ok = await salvarValidacao(avaliador, votos);
+  async function handleEnviarF2(votos) {
+    setEnviandoF2(true);
+    const key = avaliador.replace(/[^a-zA-Z0-9]/g,"_");
+    const ok = await fbSet(`validacao/${key}`, { votante: avaliador, votos, timestamp: Date.now() });
     if (ok) {
-      const atualizados = { ...votosValidacao, [avaliador]: votos };
-      setVotosValidacao(atualizados);
-      setJaVotaramValidacao(Object.keys(atualizados));
-      setJaVotouValidacao(true);
-    } else { alert("Erro ao salvar. Tente novamente."); }
-    setEnviandoValidacao(false);
+      const ats = { ...votosValidacao, [avaliador]: votos };
+      setVotosValidacao(ats); setJaVotaramF2(Object.keys(ats)); setJaVotouF2(true);
+    } else alert("Erro ao salvar. Tente novamente.");
+    setEnviandoF2(false);
   }
 
-  async function handleLiberarFase2() {
-    if (!window.confirm("Confirma liberar a Fase 2 para todos os participantes?")) return;
-    await salvarConfig({ fase2Liberada: true });
-    setFase2Liberada(true);
-    alert("✅ Fase 2 liberada com sucesso!");
-  }
-
-  function handleSelectFase1(nome) {
-    setAvaliador(nome);
-    setAvaliacoes(todasRespostas[nome] || {});
-    setJaEnviou(!!todasRespostas[nome]);
-    setTela("avaliacao");
-  }
-
-  function handleSelectFase2() { setTela("selecao_fase2"); }
-
-  function acessarAdmin() {
-    const senha = window.prompt("Acesso restrito. Digite a senha:");
-    if (senha === "TiagoAdmin") setTela("admin");
-    else if (senha !== null && senha !== "") alert("Senha incorreta!");
+  function calcConsolidadoF2() {
+    return JOGADORES.map(jog => {
+      const avs = Object.entries(todasRespostas).filter(([av])=>av!==jog);
+      const tecArr = avs.map(([,av])=>av[jog]?.tecnico).filter(v=>v!==null&&v!==undefined).map(Number);
+      const mobArr = avs.map(([,av])=>av[jog]?.fisico_mob).filter(v=>v!==null&&v!==undefined).map(Number);
+      const ltArr  = avs.map(([,av])=>leituraTotal(av[jog]?.leitura_sub)).filter(v=>v!==null);
+      const media = arr => {
+        if (!arr.length) return null;
+        const s=arr.length>=3?[...arr].sort((a,b)=>a-b).slice(1,-1):arr;
+        return s.reduce((a,b)=>a+b,0)/s.length;
+      };
+      const gen=JOGADORES_BASE.find(j=>j.nome===jog)?.genero||"M";
+      const nb=notaBaseAltura(cadastro[jog]?.altura,gen);
+      const mobM=media(mobArr);
+      const fis=nb!==null&&mobM!==null?Math.min(10,nb+mobM):null;
+      const nf=notaFinalV2(media(tecArr),fis,media(ltArr));
+      return { nome:jog, nf };
+    }).filter(j=>j.nf!==null);
   }
 
   if (carregando) return (
-    <div style={{ minHeight:"100vh", background:`linear-gradient(135deg, ${AZUL_ESC}, ${AZUL})`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:16 }}>
-      <img src="/VGM.jpg" alt="Logo" style={{ width:80, height:80, borderRadius:16, boxShadow:`0 0 0 3px ${OURO}` }} />
-      <div style={{ color:OURO, fontSize:15, fontFamily:"'DM Sans',sans-serif", fontWeight:600 }}>Carregando...</div>
+    <div style={{ minHeight:"100vh", background:`radial-gradient(ellipse at top, ${AZUL_MED} 0%, ${AZUL_ESC} 40%, ${PRETO} 100%)`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:16 }}>
+      <img src="/VGM.png" alt="Logo" style={{ width:90, height:90, borderRadius:18, boxShadow:`0 0 0 3px ${OURO_ESC}, 0 0 25px rgba(255,193,7,0.2)` }} />
+      <div style={{ color:OURO, fontSize:15, fontFamily:"'DM Sans',sans-serif", fontWeight:700, letterSpacing:1 }}>Carregando...</div>
+      <div style={{ color:OURO_ESC, fontSize:11, letterSpacing:2 }}>★ VOLEI GUIOMAR DE MELO ★</div>
     </div>
   );
 
   if (tela==="admin") return (
-    <TelaAdmin dados={todasRespostas} votosValidacao={votosValidacao}
-      fase2Liberada={fase2Liberada} onLiberarFase2={handleLiberarFase2}
-      onVoltar={() => setTela("selecao")} />
+    <TelaAdmin dados={todasRespostas} cadastro={cadastro} setCadastro={setCadastro}
+      votosValidacao={votosValidacao} fase3={fase3} setFase3={setFase3}
+      config={config} setConfig={setConfig} onVoltar={()=>setTela("selecao")} />
   );
 
   if (tela==="avaliacao") return (
     <TelaAvaliacao avaliador={avaliador} avaliacoes={avaliacoes} setAvaliacoes={setAvaliacoes}
-      onEnviar={handleEnviarFase1} enviando={enviando} jaEnviou={jaEnviou} onVoltar={() => setTela("selecao")} />
+      cadastro={cadastro} onEnviar={handleEnviarF1} enviando={enviando} jaEnviou={jaEnviou} onVoltar={()=>setTela("selecao")} />
   );
 
-  if (tela==="selecao_fase2") return (
-    <TelaSelecaoFase2
-      onSelect={(nome) => { setAvaliador(nome); setJaVotouValidacao(!!votosValidacao[nome]); setTela("validacao"); }}
-      jaVotaram={jaVotaramValidacao}
-      onVoltar={() => setTela("selecao")}
-    />
+  if (tela==="selecao_f2") return (
+    <TelaSelecaoF2 onSelect={nome=>{ setAvaliador(nome); setJaVotouF2(!!votosValidacao[nome]); setTela("validacao"); }}
+      jaVotaram={jaVotaramF2} onVoltar={()=>setTela("selecao")} />
   );
 
   if (tela==="validacao") {
-    const consolidado = JOGADORES.map(jog => {
-      const medias = {};
-      CRITERIOS.forEach(c => {
-        const arr = Object.entries(todasRespostas).filter(([av]) => av !== jog)
-          .map(([,av]) => av[jog]?.[c.key]).filter(v=>v!==undefined&&v!==null&&v!=="").map(Number);
-        if (arr.length>=3){const s=[...arr].sort((a,b)=>a-b).slice(1,-1);medias[c.key]=s.reduce((a,b)=>a+b,0)/s.length;}
-        else if(arr.length>0){medias[c.key]=arr.reduce((a,b)=>a+b,0)/arr.length;}
-        else{medias[c.key]=null;}
-      });
-      const vals=CRITERIOS.map(c=>medias[c.key]).filter(v=>v!==null);
-      const nf=vals.length===4?Math.round(CRITERIOS.reduce((acc,c)=>acc+(medias[c.key]*c.peso),0)*2)/2:null;
-      return { nome:jog, medias, nf };
-    }).filter(j=>j.nf!==null);
+    const consolidado = calcConsolidadoF2();
     return (
       <TelaValidacao votante={avaliador} consolidado={consolidado}
-        votosValidacao={votosValidacao} jaVotouValidacao={jaVotouValidacao}
-        onEnviar={handleEnviarValidacao} enviando={enviandoValidacao} onVoltar={() => setTela("selecao")} />
+        votosValidacao={votosValidacao} jaVotou={jaVotouF2}
+        onEnviar={handleEnviarF2} enviando={enviandoF2} onVoltar={()=>setTela("selecao")} />
     );
   }
 
   return (
-    <TelaSelecao onSelectFase1={handleSelectFase1} onSelectFase2={handleSelectFase2}
-      jaAvaliaram={jaAvaliaram} jaVotaramFase2={jaVotaramValidacao}
-      fase2Liberada={fase2Liberada} onAdmin={acessarAdmin} />
+    <TelaSelecao onF1={nome=>{ setAvaliador(nome); setAvaliacoes(todasRespostas[nome]||{}); setJaEnviou(!!todasRespostas[nome]); setTela("avaliacao"); }}
+      onF2={()=>setTela("selecao_f2")} jaAvaliaram={jaAvaliaram} jaVotaramFase2={jaVotaramF2}
+      fase2Liberada={config.fase2Liberada}
+      onAdmin={()=>{ const s=window.prompt("Senha:"); if(s==="TiagoAdmin") setTela("admin"); else if(s!==null&&s!=="") alert("Senha incorreta!"); }} />
   );
 }
