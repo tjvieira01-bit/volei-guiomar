@@ -76,9 +76,16 @@ function notaFinalV2(tecnico, fisico, leitura) {
 
 function leituraTotal(sub) {
   if (!sub) return null;
-  const { posicionamento, leitura, decisao } = sub;
-  if ([posicionamento,leitura,decisao].some(v=>v===null||v===undefined)) return null;
-  return Number(posicionamento)+Number(leitura)+Number(decisao);
+  // Formato novo: posicionamento, leitura, decisao
+  if (sub.posicionamento!==undefined || sub.leitura!==undefined) {
+    const { posicionamento, leitura, decisao } = sub;
+    if ([posicionamento,leitura,decisao].some(v=>v===null||v===undefined)) return null;
+    return Number(posicionamento)+Number(leitura)+Number(decisao);
+  }
+  // Formato antigo: rotacao, espacos, decisao, comunicacao
+  const { rotacao, espacos, decisao, comunicacao } = sub;
+  if ([rotacao,espacos,decisao,comunicacao].some(v=>v===null||v===undefined)) return null;
+  return Number(rotacao)+Number(espacos)+Number(decisao)+Number(comunicacao);
 }
 
 // ── Níveis ────────────────────────────────────────────────────────────────────
@@ -142,10 +149,11 @@ async function carregarTudo() {
     fbGet("config"), fbGet("cadastro")
   ]);
   const avaliacoes = {};
-  if (avalData) Object.values(avalData).forEach(e => { if(e?.avaliador) avaliacoes[e.avaliador]=e.dados; });
+  if (avalData) Object.values(avalData).forEach(e => { if(e?.avaliador) avaliacoes[decodeURIComponent(e.avaliador)]=e.dados; });
   const validacao = {};
-  if (validData) Object.values(validData).forEach(e => { if(e?.votante) validacao[e.votante]=e.votos; });
-  const fase3 = fase3Data || {};
+  if (validData) Object.values(validData).forEach(e => { if(e?.votante) validacao[decodeURIComponent(e.votante)]=e.votos; });
+  const fase3 = {};
+  if (fase3Data) Object.entries(fase3Data).forEach(([k,v]) => { fase3[decodeURIComponent(k.replace(/%/g,'%'))]=v; });
   const config = configData || { fase2Liberada:false, fase3Liberada:false };
   const cadastro = cadastroData || {};
   return { avaliacoes, validacao, fase3, config, cadastro };
@@ -278,7 +286,7 @@ function TelaAvaliacao({ avaliador, avaliacoes, setAvaliacoes, cadastro, onEnvia
 
     return (
       <div style={{ minHeight:"100vh", background:CZ_CL }}>
-        <Header titulo={jogAtual} subtitulo={`${genero==="F"?"♀":"♂"} ${cad.altura?cad.altura+"cm":""}`} onVoltar={()=>setView("lista")}
+        <Header titulo={jogAtual} subtitulo={`${genero==="F"?"♀":"♂"} ${cad.porte||cad.altura||""}`} onVoltar={()=>setView("lista")}
           direita={nf!==null&&<div style={{ background:`linear-gradient(135deg,${OURO},${OURO_ESC})`, borderRadius:10, padding:"5px 14px", textAlign:"center", minWidth:52 }}>
             <div style={{ fontSize:9, color:AZUL_ESC, fontWeight:700 }}>NOTA</div>
             <div style={{ fontSize:20, color:AZUL_ESC, fontWeight:800, lineHeight:1 }}>{nf.toFixed(1)}</div>
@@ -749,7 +757,7 @@ function TelaAdmin({ dados, cadastro, setCadastro, votosValidacao, fase3, setFas
       const mobMedia = media(mobArr);
       const ltMedia  = media(ltArr);
       const gen = JOGADORES_BASE.find(j=>j.nome===jog)?.genero||"M";
-      const nb = notaBaseAltura(cadastro[jog]?.altura, gen);
+      const nb = notaBaseAltura(cadastro[jog]?.porte || cadastro[jog]?.altura, gen);
       const fisMedia = nb!==null&&mobMedia!==null?Math.min(10,nb+mobMedia):null;
       const nf = notaFinalV2(tecMedia, fisMedia, ltMedia);
       return { nome:jog, tecnico:tecMedia, fisico:fisMedia, leitura:ltMedia, nf, qtd:tecArr.length };
@@ -792,7 +800,7 @@ function TelaAdmin({ dados, cadastro, setCadastro, votosValidacao, fase3, setFas
 
   async function salvarCadastro(nome, dados) {
     setSalvando(true);
-    const ok = await fbPatch(`cadastro/${nome.replace(/[^a-zA-Z0-9]/g,"_")}`, dados);
+    const ok = await fbPatch(`cadastro/${encodeURIComponent(nome)}`, dados);
     if (ok) setCadastro(prev=>({...prev,[nome]:{...(prev[nome]||{}),...dados}}));
     setSalvando(false);
     return ok;
@@ -800,7 +808,7 @@ function TelaAdmin({ dados, cadastro, setCadastro, votosValidacao, fase3, setFas
 
   async function salvarFase3(nome, notaAjustada, justificativa) {
     const entry = { notaAjustada, justificativa, timestamp: Date.now() };
-    const ok = await fbSet(`fase3/${nome.replace(/[^a-zA-Z0-9]/g,"_")}`, entry);
+    const ok = await fbSet(`fase3/${encodeURIComponent(nome)}`, entry);
     if (ok) setFase3(prev=>({...prev,[nome]:entry}));
     return ok;
   }
@@ -856,18 +864,26 @@ function TelaAdmin({ dados, cadastro, setCadastro, votosValidacao, fase3, setFas
           <div style={{ background:CZ_CARD, borderRadius:14, border:`1px solid rgba(255,255,255,0.1)`, padding:"1rem", marginBottom:12 }}>
             <div style={{ color:OURO, fontWeight:700, fontSize:13, marginBottom:10 }}>📋 Cadastro — {gen==="F"?"♀ Feminino":"♂ Masculino"}</div>
             <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-              <input type="number" placeholder="Altura (cm)" defaultValue={cad.altura||""} id={`alt_${jogSel}`}
-                style={{ flex:1, padding:"8px 12px", borderRadius:8, border:`1px solid ${OURO_ESC}`, background:CZ_MED, color:BRANCO, fontSize:13, outline:"none" }} />
+              <select id={`porte_${jogSel}`} defaultValue={cad.porte||""}
+                style={{ flex:1, padding:"8px 12px", borderRadius:8, border:`1px solid ${OURO_ESC}`, background:CZ_MED, color:BRANCO, fontSize:13, outline:"none" }}>
+                <option value="">— Selecione o porte —</option>
+                <option value="Baixo">🔴 Baixo</option>
+                <option value="Médio">🟡 Médio</option>
+                <option value="Alto">🟢 Alto</option>
+              </select>
               <button onClick={async()=>{
-                const alt = document.getElementById(`alt_${jogSel}`)?.value;
-                if (!alt) return;
-                const ok = await salvarCadastro(jogSel, { altura: Number(alt) });
-                if (ok) alert("✅ Altura salva!");
+                const porte = document.getElementById(`porte_${jogSel}`)?.value;
+                if (!porte) return alert("Selecione um porte");
+                const ok = await salvarCadastro(jogSel, { porte });
+                if (ok) alert("✅ Porte salvo!");
               }} style={{ padding:"8px 14px", borderRadius:8, border:"none", background:OURO, color:AZUL_ESC, fontSize:12, fontWeight:700, cursor:"pointer" }}>
                 {salvando?"...":"Salvar"}
               </button>
             </div>
-            {cad.altura&&<div style={{ fontSize:11, color:OURO_ESC, marginTop:6 }}>Nota base atual: {notaBaseAltura(cad.altura,gen)} (altura {cad.altura}cm)</div>}
+            {(cad.porte||cad.altura)&&<div style={{ fontSize:11, color:OURO_ESC, marginTop:6 }}>
+              Porte: <strong>{cad.porte||"—"}</strong> · Nota base: <strong>{notaBaseAltura(cad.porte||cad.altura,gen)}</strong>
+              {gen==="M"?" (♂ Baixo&lt;1,70 · Médio 1,70–1,80 · Alto&gt;1,80)":" (♀ Baixo&lt;1,60 · Médio 1,60–1,70 · Alto&gt;1,70)"}
+            </div>}
           </div>
 
           {/* Fase 3 */}
@@ -1196,7 +1212,7 @@ export default function App() {
 
   async function handleEnviarF1() {
     setEnviando(true);
-    const key = avaliador.replace(/[^a-zA-Z0-9]/g,"_");
+    const key = encodeURIComponent(avaliador);
     const ok = await fbSet(`avaliacoes/${key}`, { avaliador, dados: avaliacoes, timestamp: Date.now() });
     if (ok) {
       const ats = { ...todasRespostas, [avaliador]: avaliacoes };
@@ -1207,7 +1223,7 @@ export default function App() {
 
   async function handleEnviarF2(votos) {
     setEnviandoF2(true);
-    const key = avaliador.replace(/[^a-zA-Z0-9]/g,"_");
+    const key = encodeURIComponent(avaliador);
     const ok = await fbSet(`validacao/${key}`, { votante: avaliador, votos, timestamp: Date.now() });
     if (ok) {
       const ats = { ...votosValidacao, [avaliador]: votos };
@@ -1228,7 +1244,7 @@ export default function App() {
         return s.reduce((a,b)=>a+b,0)/s.length;
       };
       const gen=JOGADORES_BASE.find(j=>j.nome===jog)?.genero||"M";
-      const nb=notaBaseAltura(cadastro[jog]?.altura,gen);
+      const nb=notaBaseAltura(cadastro[jog]?.porte||cadastro[jog]?.altura,gen);
       const mobM=media(mobArr);
       const fis=nb!==null&&mobM!==null?Math.min(10,nb+mobM):null;
       const nf=notaFinalV2(media(tecArr),fis,media(ltArr));
@@ -1271,7 +1287,7 @@ export default function App() {
 
   return (
     <TelaSelecao onF1={nome=>{ setAvaliador(nome); setAvaliacoes(todasRespostas[nome]||{}); setJaEnviou(!!todasRespostas[nome]); setTela("avaliacao"); }}
-      onF2={()=>setTela("selecao_f2")} jaAvaliaram={jaAvaliaram} jaVotaramFase2={jaVotaramF2}
+      onF2={()=>setTela("selecao_f2")} jaAvaliaram={jaAvaliaram}
       fase2Liberada={config.fase2Liberada}
       onAdmin={()=>{ const s=window.prompt("Senha:"); if(s==="TiagoAdmin") setTela("admin"); else if(s!==null&&s!=="") alert("Senha incorreta!"); }} />
   );
