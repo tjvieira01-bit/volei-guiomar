@@ -1,13 +1,18 @@
 import { useState, useEffect } from "react";
 
-// ── Cores VGM ────────────────────────────────────────────────────────────────
-const AZUL     = "#1a3a8f";
-const AZUL_ESC = "#0f2266";
-const OURO     = "#f5a800";
-const OURO_CL  = "#ffd966";
+// ── Cores VGM V2 — identidade oficial ────────────────────────────────────────
+const AZUL     = "#0047A1";   // Azul Royal oficial
+const AZUL_ESC = "#001f4d";   // Azul escuro premium
+const AZUL_MED = "#003380";   // Azul médio
+const OURO     = "#FFC107";   // Amarelo Ouro oficial
+const OURO_ESC = "#D4AF37";   // Dourado premium
+const OURO_CL  = "#FFD966";   // Ouro claro
+const PRETO    = "#000000";   // Preto premium
 const BRANCO   = "#ffffff";
-const CZ_CL    = "#f1f5f9";
-const AM       = "#fffbea";
+const CZ_CL    = "#0a1628";   // Fundo escuro principal
+const CZ_MED   = "#0d1f3c";   // Fundo escuro secundário
+const CZ_CARD  = "#0f2654";   // Card escuro
+const AM       = "#1a3460";   // Destaque azul suave
 
 // ── Jogadores — 39 em ordem alfabética ───────────────────────────────────────
 const JOGADORES = [
@@ -161,13 +166,13 @@ function exportarCSV(consolidado, dados, votosValidacao) {
 // ── Header VGM ────────────────────────────────────────────────────────────────
 function Header({ titulo, onVoltar, direita }) {
   return (
-    <div style={{ background:`linear-gradient(135deg, ${AZUL_ESC} 0%, ${AZUL} 100%)`, padding:"0.85rem 1.25rem", display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10, boxShadow:"0 2px 12px rgba(0,0,0,0.25)" }}>
+    <div style={{ background:`linear-gradient(135deg, ${PRETO} 0%, ${AZUL_ESC} 50%, ${AZUL_MED} 100%)`, padding:"0.85rem 1.25rem", display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10, boxShadow:`0 2px 20px rgba(0,0,0,0.5), 0 1px 0 ${OURO_ESC}` }}>
       {onVoltar
         ? <button onClick={onVoltar} style={{ background:`rgba(245,168,0,0.15)`, border:`1px solid rgba(245,168,0,0.35)`, color:OURO, borderRadius:8, padding:"6px 12px", cursor:"pointer", fontSize:16, lineHeight:1 }}>←</button>
         : <img src="/VGM.jpg" alt="Logo VGM" style={{ width:36, height:36, borderRadius:8, objectFit:"cover", border:`2px solid ${OURO}` }} />
       }
       <div style={{ flex:1 }}>
-        <div style={{ color:OURO, fontSize:10, fontWeight:700, letterSpacing:1.5 }}>VOLEI GUIOMAR DE MELO</div>
+        <div style={{ color:OURO_ESC, fontSize:9, fontWeight:700, letterSpacing:2, textTransform:"uppercase" }}>★ VOLEI GUIOMAR DE MELO ★</div>
         <div style={{ color:BRANCO, fontSize:15, fontWeight:700 }}>{titulo}</div>
       </div>
       {direita}
@@ -182,31 +187,33 @@ function TelaSelecao({ onSelectFase1, onSelectFase2, jaAvaliaram, jaVotaramFase2
   const pct = Math.round((jaAvaliaram.length / TOTAL_VOTANTES) * 100);
 
   return (
-    <div style={{ minHeight:"100vh", background:`linear-gradient(160deg, ${AZUL_ESC} 0%, ${AZUL} 55%, #1e4db7 100%)`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"2rem 1rem" }}>
+    <div style={{ minHeight:"100vh", background:`radial-gradient(ellipse at top, ${AZUL_MED} 0%, ${AZUL_ESC} 40%, ${PRETO} 100%)`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"2rem 1rem", position:"relative", overflow:"hidden" }}>
       <div style={{ marginBottom:"1.5rem", textAlign:"center" }}>
         <img src="/VGM.jpg" alt="Logo" style={{ width:110, height:110, borderRadius:20, objectFit:"cover", boxShadow:`0 0 0 4px ${OURO}`, marginBottom:14 }} />
         <h1 style={{ color:OURO, fontFamily:"'Syne',sans-serif", fontSize:22, fontWeight:800, margin:0 }}>Guiomar de Melo</h1>
-        <p style={{ color:"rgba(255,255,255,0.55)", fontSize:13, marginTop:4 }}>Sistema de avaliação coletiva</p>
+        <p style={{ color:OURO, fontSize:11, fontWeight:700, marginTop:4, letterSpacing:2, textTransform:"uppercase" }}>União · Força · Evolução</p>
+        <p style={{ color:"rgba(255,255,255,0.4)", fontSize:11, marginTop:2 }}>Fundado em 2020 · Sistema de avaliação</p>
       </div>
 
       {/* Progresso fase 1 */}
-      <div style={{ width:"100%", maxWidth:400, marginBottom:12 }}>
-        <div style={{ display:"flex", justifyContent:"space-between", marginBottom:5 }}>
-          <span style={{ color:"rgba(255,255,255,0.7)", fontSize:12, fontWeight:600 }}>Fase 1 — Avaliação</span>
-          <span style={{ color:OURO, fontSize:12, fontWeight:700 }}>{jaAvaliaram.length}/{TOTAL_VOTANTES}</span>
+      <div style={{ width:"100%", maxWidth:400, marginBottom:12, padding:"10px 16px", background:`rgba(0,31,77,0.6)`, borderRadius:14, border:`1px solid rgba(212,175,55,0.3)` }}>
+        <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+          <span style={{ color:"rgba(255,255,255,0.7)", fontSize:11, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>⚡ Fase 1 — Avaliação</span>
+          <span style={{ color:OURO, fontSize:12, fontWeight:800 }}>{jaAvaliaram.length}<span style={{ color:"rgba(255,255,255,0.4)", fontWeight:400 }}>/{TOTAL_VOTANTES}</span></span>
         </div>
-        <div style={{ background:"rgba(255,255,255,0.15)", borderRadius:20, height:8, overflow:"hidden" }}>
-          <div style={{ background:OURO, height:"100%", width:`${pct}%`, borderRadius:20, transition:"width .4s" }} />
+        <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:20, height:6, overflow:"hidden" }}>
+          <div style={{ background:`linear-gradient(90deg, ${OURO} 0%, ${OURO_ESC} 100%)`, height:"100%", width:`${pct}%`, borderRadius:20, transition:"width .5s", boxShadow:`0 0 8px ${OURO}` }} />
         </div>
+        <div style={{ color:"rgba(255,255,255,0.4)", fontSize:10, marginTop:4, textAlign:"right" }}>{pct}% concluído</div>
       </div>
 
       {/* Lista de jogadores */}
-      <div style={{ background:"rgba(255,255,255,0.07)", backdropFilter:"blur(10px)", borderRadius:20, padding:"1.5rem", width:"100%", maxWidth:400, border:`1px solid rgba(245,168,0,0.25)`, marginBottom:12 }}>
-        <p style={{ color:"rgba(255,255,255,0.8)", fontSize:13, marginBottom:"0.75rem", textAlign:"center", fontWeight:600 }}>
+      <div style={{ background:`rgba(0,31,77,0.8)`, backdropFilter:"blur(16px)", borderRadius:20, padding:"1.5rem", width:"100%", maxWidth:400, border:`1px solid ${OURO_ESC}`, marginBottom:12, boxShadow:`0 0 30px rgba(255,193,7,0.1)` }}>
+        <p style={{ color:OURO, fontSize:12, marginBottom:"0.75rem", textAlign:"center", fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>
           📝 Fase 1 — Selecione seu nome para avaliar
         </p>
         <input placeholder="🔍 Buscar seu nome..." value={busca} onChange={e => setBusca(e.target.value)}
-          style={{ width:"100%", padding:"10px 14px", borderRadius:10, border:`1px solid rgba(245,168,0,0.3)`, background:"rgba(255,255,255,0.08)", color:BRANCO, fontSize:14, marginBottom:10, outline:"none", boxSizing:"border-box" }} />
+          style={{ width:"100%", padding:"10px 14px", borderRadius:10, border:`1px solid ${OURO_ESC}`, background:`rgba(0,51,128,0.5)`, color:BRANCO, fontSize:14, marginBottom:10, outline:"none", boxSizing:"border-box" }} />
         <div style={{ maxHeight:260, overflowY:"auto", display:"flex", flexDirection:"column", gap:6 }}>
           {filtrados.map(j => {
             const enviou = jaAvaliaram.includes(j);
@@ -237,15 +244,16 @@ function TelaSelecao({ onSelectFase1, onSelectFase2, jaAvaliaram, jaVotaramFase2
           </button>
         </div>
       ) : (
-        <div style={{ width:"100%", maxWidth:400, marginBottom:8, padding:"12px 16px", borderRadius:14, border:`1px dashed rgba(245,168,0,0.3)`, background:"rgba(245,168,0,0.05)", textAlign:"center" }}>
-          <div style={{ color:"rgba(255,255,255,0.5)", fontSize:12, fontWeight:600 }}>🔒 Fase 2 — disponível após todos enviarem a fase 1</div>
-          <div style={{ color:"rgba(255,255,255,0.3)", fontSize:11, marginTop:4 }}>{TOTAL_VOTANTES - jaAvaliaram.length} participante{TOTAL_VOTANTES - jaAvaliaram.length !== 1 ? "s" : ""} ainda não avaliou</div>
+        <div style={{ width:"100%", maxWidth:400, marginBottom:8, padding:"14px 16px", borderRadius:14, border:`1px dashed rgba(212,175,55,0.25)`, background:`rgba(0,20,60,0.5)`, textAlign:"center" }}>
+          <div style={{ color:"rgba(255,193,7,0.5)", fontSize:12, fontWeight:700, letterSpacing:1 }}>🔒 FASE 2 — BLOQUEADA</div>
+          <div style={{ color:"rgba(255,255,255,0.35)", fontSize:11, marginTop:4 }}>Disponível após todos os {TOTAL_VOTANTES} enviarem a fase 1</div>
+          <div style={{ color:OURO, fontSize:11, marginTop:3, fontWeight:700 }}>{TOTAL_VOTANTES - jaAvaliaram.length} ainda {TOTAL_VOTANTES - jaAvaliaram.length !== 1 ? "faltam" : "falta"}</div>
         </div>
       )}
 
       <button onClick={onAdmin}
-        style={{ marginTop:10, background:"none", border:`1px solid rgba(245,168,0,0.2)`, color:"rgba(255,255,255,0.3)", fontSize:11, borderRadius:8, padding:"6px 14px", cursor:"pointer" }}>
-        painel administrador
+        style={{ marginTop:10, background:"none", border:`1px solid rgba(212,175,55,0.2)`, color:"rgba(255,255,255,0.25)", fontSize:10, borderRadius:8, padding:"5px 14px", cursor:"pointer", letterSpacing:1 }}>
+        ⚙ painel administrador
       </button>
     </div>
   );
@@ -290,7 +298,7 @@ function TelaAvaliacao({ avaliador, avaliacoes, setAvaliacoes, onEnviar, enviand
             const val = notas[c.key];
             const ok = val !== undefined && val !== "";
             return (
-              <div key={c.key} style={{ background:BRANCO, borderRadius:16, padding:"1rem 1.25rem", marginBottom:10, border:`1px solid ${ok ? OURO_CL : "#e2e8f0"}` }}>
+              <div key={c.key} style={{ background:CZ_CARD, borderRadius:16, padding:"1rem 1.25rem", marginBottom:10, border:`1px solid ${ok ? OURO_CL : "#e2e8f0"}` }}>
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
                   <div>
                     <div style={{ fontWeight:700, fontSize:14, color:AZUL_ESC }}>{c.icon} {c.label} <span style={{ color:"#94a3b8", fontWeight:400 }}>({Math.round(c.peso*100)}%)</span></div>
@@ -343,11 +351,11 @@ function TelaAvaliacao({ avaliador, avaliacoes, setAvaliacoes, onEnviar, enviand
         <Header titulo={`Resumo — ${avaliador}`} onVoltar={() => setView("lista")} />
         <div style={{ padding:"1rem" }}>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:14 }}>
-            <div style={{ background:BRANCO, borderRadius:14, padding:"1rem", border:`1px solid ${OURO_CL}`, textAlign:"center" }}>
+            <div style={{ background:CZ_CARD, borderRadius:14, padding:"1rem", border:`1px solid ${OURO_CL}`, textAlign:"center" }}>
               <div style={{ fontSize:28, fontWeight:800, color:AZUL }}>{completos.length}</div>
               <div style={{ fontSize:12, color:"#64748b" }}>completos</div>
             </div>
-            <div style={{ background:BRANCO, borderRadius:14, padding:"1rem", border:"1px solid #e2e8f0", textAlign:"center" }}>
+            <div style={{ background:CZ_CARD, borderRadius:14, padding:"1rem", border:"1px solid #e2e8f0", textAlign:"center" }}>
               <div style={{ fontSize:28, fontWeight:800, color: incompletos.length>0?"#f97316":"#22c55e" }}>{incompletos.length}</div>
               <div style={{ fontSize:12, color:"#64748b" }}>pendentes</div>
             </div>
@@ -361,7 +369,7 @@ function TelaAvaliacao({ avaliador, avaliacoes, setAvaliacoes, onEnviar, enviand
               ))}
             </div>
           )}
-          <div style={{ background:BRANCO, borderRadius:14, border:"1px solid #e2e8f0", overflow:"hidden", marginBottom:14 }}>
+          <div style={{ background:CZ_CARD, borderRadius:14, border:"1px solid #e2e8f0", overflow:"hidden", marginBottom:14 }}>
             <div style={{ background:AZUL, padding:"10px 16px", display:"flex", justifyContent:"space-between" }}>
               <span style={{ color:OURO, fontSize:11, fontWeight:700 }}>NOTAS FINAIS</span>
               <span style={{ color:"rgba(255,255,255,0.5)", fontSize:11 }}>{completos.length}/{lista.length}</span>
@@ -414,16 +422,16 @@ function TelaAvaliacao({ avaliador, avaliacoes, setAvaliacoes, onEnviar, enviand
           const ok = nP === 4;
           return (
             <button key={j} onClick={() => { setJogadorAtual(j); setView("jogador"); }}
-              style={{ display:"flex", alignItems:"center", width:"100%", padding:"11px 14px", marginBottom:7, background:BRANCO, borderRadius:14, border: ok ? `1px solid ${OURO_CL}` : "1px solid #e2e8f0", cursor:"pointer", gap:12 }}>
+              style={{ display:"flex", alignItems:"center", width:"100%", padding:"11px 14px", marginBottom:7, background:CZ_CARD, borderRadius:14, border: ok ? `1px solid ${OURO_CL}` : "1px solid #e2e8f0", cursor:"pointer", gap:12 }}>
               <div style={{ width:26, height:26, borderRadius:7, background: ok ? AZUL:CZ_CL, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700, color: ok ? OURO:"#64748b", flexShrink:0 }}>{idx+1}</div>
               <div style={{ flex:1, textAlign:"left" }}>
-                <div style={{ fontWeight:600, fontSize:13, color:"#1e293b" }}>{j}</div>
+                <div style={{ fontWeight:600, fontSize:13, color:BRANCO }}>{j}</div>
                 <div style={{ display:"flex", gap:4, marginTop:5 }}>
                   {CRITERIOS.map(c => <div key={c.key} style={{ flex:1, height:4, borderRadius:2, background: notas[c.key]!==undefined && notas[c.key]!==""?notaColor(notas[c.key]):"#e2e8f0" }} />)}
                 </div>
               </div>
               <div style={{ minWidth:42, height:42, borderRadius:10, background: nf!==null?notaColor(nf):CZ_CL, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", border: ok?`2px solid ${OURO}`:"2px solid transparent" }}>
-                {nf!==null ? <><div style={{ fontSize:15, fontWeight:800, color:"#1e293b", lineHeight:1 }}>{nf.toFixed(1)}</div><div style={{ fontSize:9, color:"#64748b" }}>{nP}/4</div></> : <div style={{ fontSize:11, color:"#94a3b8" }}>{nP}/4</div>}
+                {nf!==null ? <><div style={{ fontSize:15, fontWeight:800, color:BRANCO, lineHeight:1 }}>{nf.toFixed(1)}</div><div style={{ fontSize:9, color:"rgba(255,255,255,0.4)" }}>{nP}/4</div></> : <div style={{ fontSize:11, color:"#94a3b8" }}>{nP}/4</div>}
               </div>
               <div style={{ color:"#cbd5e1", fontSize:18 }}>›</div>
             </button>
@@ -439,7 +447,7 @@ function TelaSelecaoFase2({ onSelect, jaVotaram, onVoltar }) {
   const [busca, setBusca] = useState("");
   const filtrados = JOGADORES.filter(j => j.toLowerCase().includes(busca.toLowerCase()));
   return (
-    <div style={{ minHeight:"100vh", background:`linear-gradient(160deg, ${AZUL_ESC} 0%, ${AZUL} 55%, #1e4db7 100%)`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"2rem 1rem" }}>
+    <div style={{ minHeight:"100vh", background:`radial-gradient(ellipse at top, ${AZUL_MED} 0%, ${AZUL_ESC} 40%, ${PRETO} 100%)`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"2rem 1rem", position:"relative", overflow:"hidden" }}>
       <div style={{ marginBottom:"1.5rem", textAlign:"center" }}>
         <img src="/VGM.jpg" alt="Logo" style={{ width:90, height:90, borderRadius:16, objectFit:"cover", boxShadow:`0 0 0 4px ${OURO}`, marginBottom:12 }} />
         <h1 style={{ color:OURO, fontFamily:"'Syne',sans-serif", fontSize:20, fontWeight:800, margin:0 }}>2ª Rodada</h1>
@@ -448,7 +456,7 @@ function TelaSelecaoFase2({ onSelect, jaVotaram, onVoltar }) {
       <div style={{ background:"rgba(255,255,255,0.07)", backdropFilter:"blur(10px)", borderRadius:20, padding:"1.5rem", width:"100%", maxWidth:400, border:`1px solid rgba(245,168,0,0.25)` }}>
         <p style={{ color:"rgba(255,255,255,0.8)", fontSize:13, marginBottom:"1rem", textAlign:"center", fontWeight:500 }}>Selecione o seu nome para validar as notas</p>
         <input placeholder="🔍 Buscar seu nome..." value={busca} onChange={e => setBusca(e.target.value)}
-          style={{ width:"100%", padding:"10px 14px", borderRadius:10, border:`1px solid rgba(245,168,0,0.3)`, background:"rgba(255,255,255,0.08)", color:BRANCO, fontSize:14, marginBottom:10, outline:"none", boxSizing:"border-box" }} />
+          style={{ width:"100%", padding:"10px 14px", borderRadius:10, border:`1px solid ${OURO_ESC}`, background:`rgba(0,51,128,0.5)`, color:BRANCO, fontSize:14, marginBottom:10, outline:"none", boxSizing:"border-box" }} />
         <div style={{ maxHeight:300, overflowY:"auto", display:"flex", flexDirection:"column", gap:6 }}>
           {filtrados.map(j => {
             const jaVotou = jaVotaram.includes(j);
@@ -497,12 +505,12 @@ function TelaValidacao({ votante, consolidado, votosValidacao, jaVotouValidacao,
           </div>}
         />
         <div style={{ padding:"1rem" }}>
-          <div style={{ background:BRANCO, borderRadius:16, padding:"1.25rem", marginBottom:12, border:`1px solid ${OURO_CL}`, textAlign:"center" }}>
+          <div style={{ background:CZ_CARD, borderRadius:16, padding:"1.25rem", marginBottom:12, border:`1px solid ${OURO_CL}`, textAlign:"center" }}>
             <div style={{ fontSize:11, color:"#94a3b8", fontWeight:600, letterSpacing:1, marginBottom:6 }}>NOTA CONSOLIDADA ATUAL</div>
             <div style={{ fontSize:48, fontWeight:800, color:AZUL, lineHeight:1 }}>{nf.toFixed(1)}</div>
             <div style={{ fontSize:11, color:"#94a3b8", marginTop:6 }}>{nivelLabel(nf)}</div>
           </div>
-          <div style={{ background:BRANCO, borderRadius:16, padding:"1.25rem", border:"1px solid #e2e8f0" }}>
+          <div style={{ background:CZ_CARD, borderRadius:16, padding:"1.25rem", border:"1px solid #e2e8f0" }}>
             <div style={{ fontSize:13, fontWeight:700, color:AZUL_ESC, marginBottom:14, textAlign:"center" }}>Qual nota representa melhor {jogadorAtual}?</div>
             <div style={{ display:"flex", gap:10 }}>
               {opcoes.map((op,i) => {
@@ -545,11 +553,11 @@ function TelaValidacao({ votante, consolidado, votosValidacao, jaVotouValidacao,
         <Header titulo="Resumo da validacao" onVoltar={() => setView("lista")} />
         <div style={{ padding:"1rem" }}>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:14 }}>
-            <div style={{ background:BRANCO, borderRadius:14, padding:"1rem", border:`1px solid ${OURO_CL}`, textAlign:"center" }}>
+            <div style={{ background:CZ_CARD, borderRadius:14, padding:"1rem", border:`1px solid ${OURO_CL}`, textAlign:"center" }}>
               <div style={{ fontSize:28, fontWeight:800, color:AZUL }}>{completos.length}</div>
               <div style={{ fontSize:12, color:"#64748b" }}>votados</div>
             </div>
-            <div style={{ background:BRANCO, borderRadius:14, padding:"1rem", border:"1px solid #e2e8f0", textAlign:"center" }}>
+            <div style={{ background:CZ_CARD, borderRadius:14, padding:"1rem", border:"1px solid #e2e8f0", textAlign:"center" }}>
               <div style={{ fontSize:28, fontWeight:800, color: incompletos.length>0?"#f97316":"#22c55e" }}>{incompletos.length}</div>
               <div style={{ fontSize:12, color:"#64748b" }}>pendentes</div>
             </div>
@@ -560,7 +568,7 @@ function TelaValidacao({ votante, consolidado, votosValidacao, jaVotouValidacao,
               {incompletos.map(j => <button key={j.nome} onClick={() => { setJogadorAtual(j.nome); setView("jogador"); }} style={{ display:"block", width:"100%", textAlign:"left", padding:"7px 0", background:"none", border:"none", borderBottom:"1px solid #fed7aa", color:"#c2410c", fontSize:13, cursor:"pointer" }}>→ {j.nome} (nota: {j.nf.toFixed(1)})</button>)}
             </div>
           )}
-          <div style={{ background:BRANCO, borderRadius:14, border:"1px solid #e2e8f0", overflow:"hidden", marginBottom:14 }}>
+          <div style={{ background:CZ_CARD, borderRadius:14, border:"1px solid #e2e8f0", overflow:"hidden", marginBottom:14 }}>
             <div style={{ background:AZUL, padding:"10px 16px", display:"flex", justifyContent:"space-between" }}>
               <span style={{ color:OURO, fontSize:11, fontWeight:700 }}>SEUS VOTOS</span>
               <span style={{ color:"rgba(255,255,255,0.5)", fontSize:11 }}>{completos.length}/{lista.length}</span>
@@ -619,7 +627,7 @@ function TelaValidacao({ votante, consolidado, votosValidacao, jaVotouValidacao,
           const mudou = votado && voto !== j.nf;
           return (
             <button key={j.nome} onClick={() => { setJogadorAtual(j.nome); setView("jogador"); }}
-              style={{ display:"flex", alignItems:"center", width:"100%", padding:"11px 14px", marginBottom:7, background:BRANCO, borderRadius:14, border: votado?`1px solid ${OURO_CL}`:"1px solid #e2e8f0", cursor:"pointer", gap:12 }}>
+              style={{ display:"flex", alignItems:"center", width:"100%", padding:"11px 14px", marginBottom:7, background:CZ_CARD, borderRadius:14, border: votado?`1px solid ${OURO_CL}`:"1px solid #e2e8f0", cursor:"pointer", gap:12 }}>
               <div style={{ width:26, height:26, borderRadius:7, background: votado?AZUL:CZ_CL, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700, color: votado?OURO:"#64748b", flexShrink:0 }}>{idx+1}</div>
               <div style={{ flex:1, textAlign:"left" }}>
                 <div style={{ fontWeight:600, fontSize:13, color:"#1e293b" }}>{j.nome}</div>
@@ -685,7 +693,7 @@ function TelaAdmin({ dados, votosValidacao, fase2Liberada, onLiberarFase2, onVol
           </div>}
         />
         <div style={{ padding:"1rem" }}>
-          <div style={{ background:BRANCO, borderRadius:14, border:`1px solid ${OURO_CL}`, overflow:"hidden", marginBottom:12 }}>
+          <div style={{ background:CZ_CARD, borderRadius:14, border:`1px solid ${OURO_CL}`, overflow:"hidden", marginBottom:12 }}>
             <div style={{ background:AZUL, padding:"10px 16px" }}>
               <span style={{ color:OURO, fontSize:11, fontWeight:700 }}>MEDIAS POR CRITERIO — {votosRecebidos.length} avaliacoes</span>
             </div>
@@ -705,7 +713,7 @@ function TelaAdmin({ dados, votosValidacao, fase2Liberada, onLiberarFase2, onVol
               );
             })}
           </div>
-          <div style={{ background:BRANCO, borderRadius:14, border:"1px solid #e2e8f0", overflow:"hidden" }}>
+          <div style={{ background:CZ_CARD, borderRadius:14, border:"1px solid #e2e8f0", overflow:"hidden" }}>
             <div style={{ background:AZUL, padding:"10px 16px", display:"flex", gap:6 }}>
               <span style={{ color:OURO, fontSize:10, fontWeight:700, flex:2 }}>AVALIADOR</span>
               {CRITERIOS.map(c=><span key={c.key} style={{ color:"rgba(255,255,255,0.5)", fontSize:11, flex:1, textAlign:"center" }}>{c.icon}</span>)}
@@ -746,7 +754,7 @@ function TelaAdmin({ dados, votosValidacao, fase2Liberada, onLiberarFase2, onVol
 
       <div style={{ padding:"1rem" }}>
         {/* Painel de controle fase 2 */}
-        <div style={{ background:BRANCO, borderRadius:14, border:`1px solid ${todos39Enviaram?OURO_CL:"#e2e8f0"}`, padding:"1rem 1.25rem", marginBottom:12 }}>
+        <div style={{ background:CZ_CARD, borderRadius:14, border:`1px solid ${todos39Enviaram?OURO_CL:"#e2e8f0"}`, padding:"1rem 1.25rem", marginBottom:12 }}>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:10 }}>
             <div>
               <div style={{ fontWeight:700, fontSize:13, color:AZUL_ESC }}>🔒 Controle da Fase 2</div>
@@ -774,7 +782,7 @@ function TelaAdmin({ dados, votosValidacao, fase2Liberada, onLiberarFase2, onVol
               📥 Exportar planilha completa (.csv)
             </button>
             <p style={{ fontSize:11, color:"#94a3b8", marginBottom:10, textAlign:"center" }}>Toque em um jogador para ver todas as avaliacoes recebidas</p>
-            <div style={{ background:BRANCO, borderRadius:14, border:"1px solid #e2e8f0", overflow:"hidden", marginBottom:10 }}>
+            <div style={{ background:CZ_CARD, borderRadius:14, border:"1px solid #e2e8f0", overflow:"hidden", marginBottom:10 }}>
               <div style={{ background:AZUL, padding:"10px 16px", display:"flex", gap:6 }}>
                 <span style={{ color:OURO, fontSize:10, fontWeight:700, flex:2 }}>JOGADOR</span>
                 {CRITERIOS.map(c=><span key={c.key} style={{ color:"rgba(255,255,255,0.5)", fontSize:11, flex:1, textAlign:"center" }}>{c.icon}</span>)}
@@ -810,7 +818,7 @@ function TelaAdmin({ dados, votosValidacao, fase2Liberada, onLiberarFase2, onVol
 
           return (
             <div>
-              <div style={{ background:BRANCO, borderRadius:14, border:`1px solid ${OURO_CL}`, padding:"1rem 1.25rem", marginBottom:12, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <div style={{ background:CZ_CARD, borderRadius:14, border:`1px solid ${OURO_CL}`, padding:"1rem 1.25rem", marginBottom:12, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                 <div>
                   <div style={{ fontSize:11, color:"#94a3b8", fontWeight:600 }}>PARTICIPACAO FASE 2</div>
                   <div style={{ fontSize:22, fontWeight:800, color:AZUL }}>{jaVotaramF2.length}<span style={{ fontSize:13, color:"#94a3b8", fontWeight:400 }}>/{TOTAL_VOTANTES}</span></div>
@@ -837,7 +845,7 @@ function TelaAdmin({ dados, votosValidacao, fase2Liberada, onLiberarFase2, onVol
                   📥 Exportar
                 </button>
               </div>
-              <div style={{ background:BRANCO, borderRadius:14, border:"1px solid #e2e8f0", overflow:"hidden", marginBottom:10 }}>
+              <div style={{ background:CZ_CARD, borderRadius:14, border:"1px solid #e2e8f0", overflow:"hidden", marginBottom:10 }}>
                 <div style={{ background:AZUL, padding:"10px 16px", display:"flex", gap:6 }}>
                   <span style={{ color:OURO, fontSize:10, fontWeight:700, width:20 }}>#</span>
                   <span style={{ color:OURO, fontSize:10, fontWeight:700, flex:2 }}>JOGADOR</span>
@@ -871,7 +879,7 @@ function TelaAdmin({ dados, votosValidacao, fase2Liberada, onLiberarFase2, onVol
         })()}
 
         {tab==="participacao" && (
-          <div style={{ background:BRANCO, borderRadius:14, border:"1px solid #e2e8f0", overflow:"hidden" }}>
+          <div style={{ background:CZ_CARD, borderRadius:14, border:"1px solid #e2e8f0", overflow:"hidden" }}>
             <div style={{ background:AZUL, padding:"10px 16px", display:"flex", justifyContent:"space-between" }}>
               <span style={{ color:OURO, fontSize:11, fontWeight:700 }}>FASE 1</span>
               <span style={{ color:"rgba(255,255,255,0.5)", fontSize:11 }}>{jaAvaliaram.length}/{TOTAL_VOTANTES}</span>
