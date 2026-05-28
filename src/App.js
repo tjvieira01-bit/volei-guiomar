@@ -77,9 +77,9 @@ function notaFinalV2(tecnico, fisico, leitura) {
 
 function leituraTotal(sub) {
   if (!sub) return null;
-  const { rotacao, espacos, decisao, comunicacao } = sub;
-  if ([rotacao,espacos,decisao,comunicacao].some(v=>v===null||v===undefined)) return null;
-  return Number(rotacao)+Number(espacos)+Number(decisao)+Number(comunicacao);
+  const { posicionamento, leitura, decisao } = sub;
+  if ([posicionamento,leitura,decisao].some(v=>v===null||v===undefined)) return null;
+  return Number(posicionamento)+Number(leitura)+Number(decisao);
 }
 
 // ── Níveis ────────────────────────────────────────────────────────────────────
@@ -158,7 +158,7 @@ function Header({ titulo, subtitulo, onVoltar, direita }) {
     <div style={{ background:`linear-gradient(135deg, ${PRETO} 0%, ${AZUL_ESC} 50%, ${AZUL_MED} 100%)`, padding:"0.85rem 1.25rem", display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10, boxShadow:`0 2px 20px rgba(0,0,0,0.5), 0 1px 0 ${OURO_ESC}` }}>
       {onVoltar
         ? <button onClick={onVoltar} style={{ background:`rgba(255,193,7,0.15)`, border:`1px solid rgba(212,175,55,0.4)`, color:OURO, borderRadius:8, padding:"6px 12px", cursor:"pointer", fontSize:16, lineHeight:1 }}>←</button>
-        : <img src="/VGM.png" alt="VGM" style={{ width:38, height:38, borderRadius:8, objectFit:"cover", border:`2px solid ${OURO_ESC}` }} />
+        : <img src="/VGM.png" alt="VGM" width="38" height="38" style={{ width:38, height:38, borderRadius:8, objectFit:"cover", border:`2px solid ${OURO_ESC}` }} />
       }
       <div style={{ flex:1 }}>
         <div style={{ color:OURO_ESC, fontSize:9, fontWeight:700, letterSpacing:2 }}>★ VOLEI GUIOMAR DE MELO ★</div>
@@ -179,7 +179,7 @@ function TelaSelecao({ onF1, onF2, jaAvaliaram, jaVotaramF2, fase2Liberada, onAd
   return (
     <div style={{ minHeight:"100vh", background:`radial-gradient(ellipse at top, ${AZUL_MED} 0%, ${AZUL_ESC} 40%, ${PRETO} 100%)`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"2rem 1rem" }}>
       <div style={{ marginBottom:"1.5rem", textAlign:"center" }}>
-        <img src="/VGM.png" alt="Logo" style={{ width:110, height:110, borderRadius:20, objectFit:"cover", boxShadow:`0 0 0 3px ${OURO_ESC}, 0 0 25px rgba(255,193,7,0.25)`, marginBottom:14 }} />
+        <img src="/VGM.png" alt="Logo" width="110" height="110" style={{ width:110, height:110, borderRadius:20, objectFit:"cover", boxShadow:`0 0 0 3px ${OURO_ESC}, 0 0 25px rgba(255,193,7,0.25)`, marginBottom:14 }} />
         <h1 style={{ color:OURO, fontFamily:"'Syne',sans-serif", fontSize:22, fontWeight:800, margin:0 }}>Guiomar de Melo</h1>
         <p style={{ color:OURO_ESC, fontSize:10, fontWeight:700, marginTop:3, letterSpacing:2 }}>UNIÃO · FORÇA · EVOLUÇÃO</p>
         <p style={{ color:"rgba(255,255,255,0.35)", fontSize:10, marginTop:2 }}>Fundado em 2020 · Sistema de avaliação V2</p>
@@ -315,9 +315,11 @@ function TelaAvaliacao({ avaliador, avaliacoes, setAvaliacoes, cadastro, onEnvia
               <div>
                 <div style={{ color:OURO, fontWeight:700, fontSize:14 }}>🏃 Físico <span style={{ color:"rgba(255,255,255,0.35)", fontWeight:400, fontSize:12 }}>(25%)</span></div>
                 <div style={{ color:"rgba(255,255,255,0.45)", fontSize:11, marginTop:3 }}>
-                  {notaBase!==null?`Nota base: ${notaBase} (altura ${cad.altura||"?"}cm)`:"Altura não cadastrada — nota base indisponível"}
+                  {notaBase!==null?`Nota base: ${notaBase} (porte ${cad.porte||"?"})`:"Porte não cadastrado"}
                 </div>
-                <div style={{ color:"rgba(255,255,255,0.3)", fontSize:10, marginTop:2 }}>Ajuste pela mobilidade observada em jogo</div>
+                <div style={{ color:"rgba(255,255,255,0.3)", fontSize:10, marginTop:2 }}>
+                  Ref.: ♂ Baixo&lt;1,70 · Médio 1,70–1,80 · Alto&gt;1,80 | ♀ Baixo&lt;1,60 · Médio 1,60–1,70 · Alto&gt;1,70
+                </div>
               </div>
               <div style={{ background:fisico!==null?notaColor(fisico):CZ_MED, borderRadius:10, minWidth:46, height:46, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, fontWeight:800, color:fisico!==null?notaColorText(fisico):"#4a5568", border:`2px solid ${fisico!==null?OURO_ESC:"rgba(255,255,255,0.1)"}` }}>
                 {fisico!==null?fisico.toFixed(1):"—"}
@@ -350,10 +352,9 @@ function TelaAvaliacao({ avaliador, avaliacoes, setAvaliacoes, cadastro, onEnvia
               </div>
             </div>
             {[
-              { key:"rotacao",    label:"Sabe rodar o 6x6",              max:3, desc:"Não se perde na rotação" },
-              { key:"espacos",    label:"Posicionamento defesa/bloqueio", max:3, desc:"Ocupa bem os espaços" },
-              { key:"decisao",    label:"Tomada de decisão",              max:2, desc:"Levanta no momento certo, sabe largar" },
-              { key:"comunicacao",label:"Comunicação e organização",      max:2, desc:"Organiza e orienta o time" },
+              { key:"posicionamento", label:"Posicionamento",      max:3, desc:"Lugar certo na defesa e no bloqueio" },
+              { key:"leitura",        label:"Leitura de quadra",   max:3, desc:"Antecipa jogadas, cobre espaços, ajuda o companheiro" },
+              { key:"decisao",        label:"Tomada de decisão",   max:4, desc:"Levanta no momento certo, sabe largar, quando atacar" },
             ].map(({ key, label, max, desc }) => {
               const val = sub[key];
               const opts = Array.from({length:max+1},(_,i)=>i);
@@ -525,7 +526,7 @@ function TelaSelecaoF2({ onSelect, jaVotaram, onVoltar }) {
   return (
     <div style={{ minHeight:"100vh", background:`radial-gradient(ellipse at top, ${AZUL_MED} 0%, ${AZUL_ESC} 40%, ${PRETO} 100%)`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"2rem 1rem" }}>
       <div style={{ marginBottom:"1.5rem", textAlign:"center" }}>
-        <img src="/VGM.png" alt="Logo" style={{ width:90, height:90, borderRadius:16, objectFit:"cover", boxShadow:`0 0 0 3px ${OURO_ESC}, 0 0 20px rgba(255,193,7,0.25)`, marginBottom:12 }} />
+        <img src="/VGM.png" alt="Logo" width="90" height="90" style={{ width:90, height:90, borderRadius:16, objectFit:"cover", boxShadow:`0 0 0 3px ${OURO_ESC}, 0 0 20px rgba(255,193,7,0.25)`, marginBottom:12 }} />
         <h1 style={{ color:OURO, fontFamily:"'Syne',sans-serif", fontSize:20, fontWeight:800, margin:0 }}>2ª Rodada</h1>
         <p style={{ color:OURO_ESC, fontSize:10, fontWeight:700, marginTop:3, letterSpacing:2 }}>VALIDAÇÃO DAS NOTAS</p>
       </div>
@@ -1232,7 +1233,7 @@ export default function App() {
 
   if (carregando) return (
     <div style={{ minHeight:"100vh", background:`radial-gradient(ellipse at top, ${AZUL_MED} 0%, ${AZUL_ESC} 40%, ${PRETO} 100%)`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:16 }}>
-      <img src="/VGM.png" alt="Logo" style={{ width:90, height:90, borderRadius:18, boxShadow:`0 0 0 3px ${OURO_ESC}, 0 0 25px rgba(255,193,7,0.2)` }} />
+      <img src="/VGM.png" alt="Logo" width="90" height="90" style={{ width:90, height:90, borderRadius:18, boxShadow:`0 0 0 3px ${OURO_ESC}, 0 0 25px rgba(255,193,7,0.2)` }} />
       <div style={{ color:OURO, fontSize:15, fontFamily:"'DM Sans',sans-serif", fontWeight:700, letterSpacing:1 }}>Carregando...</div>
       <div style={{ color:OURO_ESC, fontSize:11, letterSpacing:2 }}>★ VOLEI GUIOMAR DE MELO ★</div>
     </div>
